@@ -188,6 +188,7 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
     public static final CallTransaction.Function GET_LOCKING_CAP = BridgeMethods.GET_LOCKING_CAP.getFunction();
     public static final CallTransaction.Function REGISTER_BTC_COINBASE_TRANSACTION = BridgeMethods.REGISTER_BTC_COINBASE_TRANSACTION.getFunction();
     public static final CallTransaction.Function HAS_BTC_BLOCK_COINBASE_TRANSACTION_INFORMATION = BridgeMethods.HAS_BTC_BLOCK_COINBASE_TRANSACTION_INFORMATION.getFunction();
+    public static final CallTransaction.Function REGISTER_BTC_TRANSFER = BridgeMethods.REGISTER_BTC_TRANSFER.getFunction();
 
     public static final int LOCK_WHITELIST_UNLIMITED_MODE_CODE = 0;
     public static final int LOCK_WHITELIST_ENTRY_NOT_FOUND_CODE = -1;
@@ -1091,6 +1092,36 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
         Sha256Hash blockHash = Sha256Hash.wrap((byte[]) args[0]);
 
         return bridgeSupport.hasBtcBlockCoinbaseTransactionInformation(blockHash);
+    }
+
+    public int registerBtcTransfer(Object[] args)
+    {
+        logger.trace("registerBtcTransfer");
+
+        byte[] btcTxSerialized = (byte[]) args[0];
+        int height = ((BigInteger) args[1]).intValue();;
+        byte[] pmtSerialized = (byte[]) args[2];
+        Sha256Hash derivationArgumentsHash = Sha256Hash.wrap((byte[]) args[3]);
+        Address userRefundAddress = Address.fromBase58(bridgeConstants.getBtcParams(), (String) args[4]);
+        RskAddress LBCAddress = new RskAddress((String) args[5]); // TODO review with Guido;
+        Address LPBtcAddress = Address.fromBase58(bridgeConstants.getBtcParams(), (String) args[6]);
+        boolean executionStatus = ((Boolean) args[7]).booleanValue();
+
+        try {
+        return bridgeSupport.registerBtcTransfer(
+                rskTx,
+                btcTxSerialized,
+                height,
+                pmtSerialized,
+                derivationArgumentsHash,
+                userRefundAddress,
+                LBCAddress,
+                LPBtcAddress,
+                executionStatus);
+        } catch (Exception e) {
+            logger.warn("Exception in registerBtcTransfer", e);
+            throw new RuntimeException("Exception in registerBtcTransfer", e);
+        }
     }
 
     public static BridgeMethods.BridgeMethodExecutor activeAndRetiringFederationOnly(BridgeMethods.BridgeMethodExecutor decoratee, String funcName) {

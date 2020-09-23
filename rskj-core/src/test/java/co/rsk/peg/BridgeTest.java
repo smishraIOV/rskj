@@ -20,8 +20,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.math.BigInteger;
 
-import static org.ethereum.config.blockchain.upgrades.ConsensusRule.RSKIP134;
-import static org.ethereum.config.blockchain.upgrades.ConsensusRule.RSKIP143;
+import static org.ethereum.config.blockchain.upgrades.ConsensusRule.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -190,6 +189,33 @@ public class BridgeTest {
         data = ByteUtil.merge(Bridge.REGISTER_BTC_COINBASE_TRANSACTION.encodeSignature(), Hex.decode("0000000000000000000000000000000000000000000000080000000000000000"));
         result = bridge.execute(data);
         Assert.assertNull(result);
+    }
+
+    @Test
+    public void registerBtcTransfer_before_RSKIP176_activation() {
+        doReturn(false).when(activationConfig).isActive(eq(RSKIP176), anyLong());
+
+        BridgeSupport bridgeSupportMock = mock(BridgeSupport.class);
+        Bridge bridge = getBridgeInstance(bridgeSupportMock);
+
+        byte[] data = BridgeMethods.REGISTER_BTC_TRANSFER.getFunction().encode(new Object[]{});
+
+        Assert.assertNull(bridge.execute(data));
+    }
+
+    @Test
+    public void registerBtcTransfer_after_RSKIP176_activation() throws Exception {
+        doReturn(true).when(activationConfig).isActive(eq(RSKIP176), anyLong());
+
+        BridgeSupport bridgeSupportMock = mock(BridgeSupport.class);
+        Bridge bridge = getBridgeInstance(bridgeSupportMock);
+
+        // Don't really care about the internal logic, just checking if the method is active
+        when(bridgeSupportMock.registerBtcTransfer(any(), any(), anyInt(), any(), any(), any(), any(), any(), any())).thenReturn(1);
+
+        byte[] data = Bridge.REGISTER_BTC_TRANSFER.encode(new Object[]{ 1 });
+        byte[] result = bridge.execute(data);
+        Assert.assertEquals(1, (int)Bridge.REGISTER_BTC_TRANSFER.decodeResult(result)[0]);
     }
 
     /**

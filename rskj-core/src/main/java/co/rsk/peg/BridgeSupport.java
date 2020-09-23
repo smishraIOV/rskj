@@ -2063,6 +2063,20 @@ public class BridgeSupport {
         return coinbaseInformation != null;
     }
 
+    public int registerBtcTransfer(
+            Transaction rskTx,
+            byte[] btcTxSerialized,
+            int height,
+            byte[] pmtSerialized,
+            Sha256Hash derivationArgumentsHash,
+            Address userRefundAddress,
+            RskAddress LBCAddress,
+            Address LPBtcAddress,
+            boolean executionStatus
+    ) throws Exception {
+        return 1;  //TODO: Includes logic
+    }
+
     private StoredBlock getBtcBlockchainChainHead() throws IOException, BlockStoreException {
         // Gather the current btc chain's head
         // IMPORTANT: we assume that getting the chain head from the btc blockstore
