@@ -27,6 +27,7 @@ import co.rsk.crypto.Keccak256;
 import co.rsk.metrics.profilers.Metric;
 import co.rsk.metrics.profilers.Profiler;
 import co.rsk.metrics.profilers.ProfilerFactory;
+import co.rsk.storagerent.RentTracker;
 import co.rsk.util.NodeStopper;
 import org.ethereum.crypto.Keccak256Helper;
 import org.ethereum.db.ByteArrayWrapper;
@@ -120,6 +121,7 @@ public class Trie {
     // shared Path
     private final TrieKeySlice sharedPath;
 
+    private RentTracker rentTracker; // a rent tracker to track gets and puts
 
     // default constructor, no secure
     public Trie() {
@@ -649,7 +651,14 @@ public class Trie {
      */
     @Nullable
     public Trie find(byte[] key) {
-        return find(TrieKeySlice.fromKey(key));
+        Trie trie = find(TrieKeySlice.fromKey(key));
+        trackNode(trie);
+        return trie;
+    }
+
+    private void trackNode(Trie trie) {
+        this.rentTracker.trackNode(trie); // todo(fedejinich) shouldn't I track all the internmediate nodes?
+//        this.findNodes(key); // todo(fedejinich) this is an option for tracking all the intermediate nodes up to a key
     }
 
     @Nullable
@@ -671,7 +680,6 @@ public class Trie {
         if (node == null) {
             return null;
         }
-
         return node.find(key.slice(commonPathLength + 1, key.length()));
     }
 
@@ -773,6 +781,7 @@ public class Trie {
         }
 
         Trie trie = this.internalPut(key, value, isRecursiveDelete);
+        trackNode(trie);
 
         // the following code coalesces nodes if needed for delete operation
 
@@ -1147,6 +1156,10 @@ public class Trie {
 
         message.get(bytes);
         return new VarInt(bytes, 0);
+    }
+
+    public void initRentTracker(RentTracker rentTracker) {
+        this.rentTracker = rentTracker;
     }
 
     /**

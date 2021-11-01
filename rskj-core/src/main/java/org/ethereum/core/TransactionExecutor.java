@@ -27,6 +27,7 @@ import co.rsk.metrics.profilers.Profiler;
 import co.rsk.metrics.profilers.ProfilerFactory;
 import co.rsk.panic.PanicProcessor;
 import co.rsk.rpc.modules.trace.ProgramSubtrace;
+import co.rsk.storagerent.RentTracker;
 import org.ethereum.config.Constants;
 import org.ethereum.config.blockchain.upgrades.ActivationConfig;
 import org.ethereum.config.blockchain.upgrades.ConsensusRule;
@@ -101,6 +102,8 @@ public class TransactionExecutor {
 
     private boolean localCall = false;
 
+    private RentTracker rentTracker;
+
     public TransactionExecutor(
             Constants constants, ActivationConfig activationConfig, Transaction tx, int txindex, RskAddress coinbase,
             Repository track, BlockStore blockStore, ReceiptStore receiptStore, BlockFactory blockFactory,
@@ -125,6 +128,7 @@ public class TransactionExecutor {
         this.precompiledContracts = precompiledContracts;
         this.enableRemasc = remascEnabled;
         this.deletedAccounts = new HashSet<>(deletedAccounts);
+        this.rentTracker = new RentTracker();
     }
 
     /**
@@ -150,6 +154,8 @@ public class TransactionExecutor {
      * set readyToExecute = true
      */
     private boolean init() {
+        track.initRentTracker(rentTracker);
+
         basicTxCost = tx.transactionCost(constants, activations);
 
         if (localCall) {
