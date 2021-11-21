@@ -19,14 +19,13 @@ public class RentManager {
     private final Set<Trie> trackedNodes = new HashSet<>();
     private final List<TrieKeySlice> mismatches = new ArrayList<>();
 
-
     /**
-     * Tracks nodes from an already updated Trie instance
+     * Tracks nodes from a Trie instance
      * */
     public void trackNodes(TrieKeySlice trieKeySlice, Trie trie) {
         if(trie != null) {
             // logger.error("SR - trying to find involved nodes");
-            List<Trie> nodes = trie.findNodes(trieKeySlice); //involvedNodes(trieKeySlice, trie);
+            List<Trie> nodes = trie.findNodes(trieKeySlice);
             if(nodes != null) {
                 Set<Trie> previousNodes = new HashSet<>(this.trackedNodes); // todo(fedejinich) this is for debugging purposes
                 this.trackedNodes.addAll(nodes);
@@ -41,31 +40,20 @@ public class RentManager {
         // logger.error("SR - trackedNodes size = {}, nodes = {}", trackedNodes.size(), printableTrackedNodesSet(trackedNodes));
     }
 
+    @VisibleForTesting
+    public Set<Trie> getTrackedNodes() {
+        return trackedNodes;
+    }
+
+    @VisibleForTesting
+    public List<TrieKeySlice> getMismatches() {
+        return mismatches;
+    }
+
     private List<String> printableTrackedNodesSet(Set<Trie> trackedNodes) { // todo(fedejinich) this method it's just for debugging purposes
         return trackedNodes.stream()
                 .map(RentManager::printableString)
                 .collect(Collectors.toList());
-    }
-
-    /*
-    private List<Trie> involvedNodes(TrieKeySlice trieKeySlice, Trie trie) {
-        List<Trie> nodes = trie.findNodes(trieKeySlice);
-
-        if(nodes != null) {
-            return nodes;
-        }
-
-        TrieKeySlice commonPath = trieKeySlice.commonPath(trie.getSharedPath());
-
-        // logger.error("SR - can't find a complete path for the key {}.", trieKeySlice);
-        // logger.error("SR - tracking nodes that are part of the common path. commonPath = {}", commonPath);
-
-        return trie.findNodes(commonPath);
-    }*/
-
-    @VisibleForTesting
-    public Set<Trie> getTrackedNodes() {
-        return trackedNodes;
     }
 
     private static String printableString(Trie trie) { // todo(fedejinich) this method it's just for debugging purposes
@@ -81,9 +69,5 @@ public class RentManager {
         newNodes.removeAll(previousNodes);
 
         return newNodes;
-    }
-
-    public int getMismatchesCount() {
-        return this.mismatches.size();
     }
 }

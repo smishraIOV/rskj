@@ -101,8 +101,8 @@ public class RentManagerDSLTest {
      */
     @Test
     public void trackNodes_sendRbtc() {
-        Account sender = world.getAccountByName("acc1");
-        Account receiver = world.getAccountByName("acc2");
+        Account sender = this.world.getAccountByName("acc1");
+        Account receiver = this.world.getAccountByName("acc2");
 
         Transaction transaction = new TransactionBuilder()
                 .sender(sender)
@@ -116,7 +116,6 @@ public class RentManagerDSLTest {
         RentManager rentManager = this.transactionExecutor.getRentManager();
 
         assertTrue(rentManager.getTrackedNodes().isEmpty());
-
         boolean result = this.transactionExecutor.executeTransaction();
         assertTrue(result);
 

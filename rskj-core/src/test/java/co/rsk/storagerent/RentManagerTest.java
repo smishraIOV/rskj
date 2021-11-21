@@ -45,29 +45,30 @@ public class RentManagerTest {
         List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
 
         assertTrue(trackedNodes.isEmpty());
-        assertEquals(1, rentManager.getMismatchesCount());
+        assertEquals(1, rentManager.getMismatches().size());
+        assertEquals(TrieKeySlice.fromKey(decode("1a")), rentManager.getMismatches().get(0));
     }
 
     @Test
-    public void trackNodes_partiallyExistingKey() {
+    public void trackNodes_containsSomePartOfTheKey() { // but in the end it's a nonexistent key
         Trie trie = buildTestTrie();
 
         rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008001")), trie);
         List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
 
         assertTrue(trackedNodes.isEmpty());
-        assertEquals(1, rentManager.getMismatchesCount());
+        assertEquals(1, rentManager.getMismatches().size());
+        assertEquals(TrieKeySlice.fromKey(decode("0a008001")), rentManager.getMismatches().get(0));
     }
 
     @Test
     public void trackNodes_nullTrie() {
-        Trie trie = buildTestTrie();
-
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008001")), trie);
+        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008000")), null);
         List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
 
         assertTrue(trackedNodes.isEmpty());
-        assertEquals(1, rentManager.getMismatchesCount());
+        assertEquals(0, rentManager.getMismatches().size());
+        assertEquals(TrieKeySlice.fromKey(decode("0a008000")), rentManager.getMismatches());
     }
 
     @Test
@@ -109,7 +110,7 @@ public class RentManagerTest {
      *     / \   9
      *    3   5
      */
-    private Trie buildTestTrie() {
+    private Trie buildTestTrie() { // todo(fedejinich) duplicated code, extract this to a TrieTestUtil
         Trie trie = new Trie();
         trie = trie.put(decode("0a"), new byte[] { 0x06 });
         trie = trie.put(decode("0a00"), new byte[] { 0x02 });
