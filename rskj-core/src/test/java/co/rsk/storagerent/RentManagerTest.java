@@ -27,6 +27,7 @@ public class RentManagerTest {
         Trie trie = buildTestTrie();
 
         rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008000")),trie);
+        // comment(shree) : converting HashSet into list. How does that impact the index used for testing values
         List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
 
         assertFalse(trackedNodes.isEmpty());
@@ -46,7 +47,10 @@ public class RentManagerTest {
 
         assertTrue(trackedNodes.isEmpty());
         assertEquals(1, rentManager.getMismatches().size());
-        assertEquals(TrieKeySlice.fromKey(decode("1a")), rentManager.getMismatches().get(0));
+        // comment(shree) for testing
+        System.out.println(TrieKeySlice.fromKey(decode("1a")).toString() + "\n" + rentManager.getMismatches().get(0).toString());
+        assertEquals(TrieKeySlice.fromKey(decode("1a")).toString(), rentManager.getMismatches().get(0).toString());
+        assertArrayEquals(TrieKeySlice.fromKey(decode("1a")).encode(), rentManager.getMismatches().get(0).encode());
     }
 
     @Test
@@ -58,7 +62,9 @@ public class RentManagerTest {
 
         assertTrue(trackedNodes.isEmpty());
         assertEquals(1, rentManager.getMismatches().size());
-        assertEquals(TrieKeySlice.fromKey(decode("0a008001")), rentManager.getMismatches().get(0));
+        System.out.println(TrieKeySlice.fromKey(decode("0a008001")).toString() + "\n" + rentManager.getMismatches().get(0).toString());
+        assertEquals(TrieKeySlice.fromKey(decode("0a008001")).toString(), rentManager.getMismatches().get(0).toString());
+        assertArrayEquals(TrieKeySlice.fromKey(decode("0a008001")).encode(), rentManager.getMismatches().get(0).encode());
     }
 
     @Test
@@ -68,7 +74,8 @@ public class RentManagerTest {
 
         assertTrue(trackedNodes.isEmpty());
         assertEquals(0, rentManager.getMismatches().size());
-        assertEquals(TrieKeySlice.fromKey(decode("0a008000")), rentManager.getMismatches());
+        // comment(shree) if mismatch list is mepty, then the following is weird
+        //assertEquals(TrieKeySlice.fromKey(decode("0a008000")), rentManager.getMismatches());
     }
 
     @Test
@@ -109,6 +116,8 @@ public class RentManagerTest {
      *      4     /
      *     / \   9
      *    3   5
+     * note(shree): Looks like simply using "00" for left, "80" right. Not traversal order. 
+     * perhaps bcos binary ..  0b10000000 == 0x80 in hex.
      */
     private Trie buildTestTrie() { // todo(fedejinich) duplicated code, extract this to a TrieTestUtil
         Trie trie = new Trie();

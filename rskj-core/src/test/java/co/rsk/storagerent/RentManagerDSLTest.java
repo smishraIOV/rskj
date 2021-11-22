@@ -36,6 +36,13 @@ import static org.mockito.Mockito.verify;
  *
  *  Then if it's not a precompiled call, it always tries to getCode() from the target address (to),
  *  even if it's not a contract call.
+ *  comment(shree): 
+ *      So we should test the number of mismatches here?
+ *      Also in that case, we should not collect penalty-rent for non-existent key (for ordinary EOA)
+ *      if the TX to an actual contract is not a call, then it can only be a send (which will trigger fallback or receive method). 
+ *      But in any case, rent Tracking will be triggerred for node that contains the contract code 
+ *      and the TX "can" fail if it was sent with 21K gas and some rent is due.
+ *      So this is a reason to avoid rent tracking for simple sends, irrespective of recipient account type
  */
 public class RentManagerDSLTest {
 
@@ -119,10 +126,14 @@ public class RentManagerDSLTest {
         boolean result = this.transactionExecutor.executeTransaction();
         assertTrue(result);
 
-        verify(rentManager, Mockito.times(8)).trackNodes(any(), any());
+        verify(rentManager, Mockito.times(8)).trackNodes(any(), any()); // comment(shree) : how predicted?
 
         assertNotNull(rentManager.getTrackedNodes());
         assertFalse(rentManager.getTrackedNodes().isEmpty());
+        System.out.println("Mismatch key (no. of) : " + rentManager.getMismatches().size() + "\n Nodes tracked: " + rentManager.getTrackedNodes().size());
+         //for failed contract code get of "destination" address
+        assertEquals(1, rentManager.getMismatches().size());
+         // comment(shree):depends on the keys: "acc1", "acc2". Adding a "0" to each makes trie size 17.
         assertEquals(11, rentManager.getTrackedNodes().size());
     }
 

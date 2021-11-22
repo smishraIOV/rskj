@@ -13,6 +13,7 @@ test {
     jvmArgs '-Xss32m', '-Xmx3G'
 
     testLogging {
+        showStandardStreams = true // comment(shree) added for testing without logger
         events "failed"
         exceptionFormat "short"
     }

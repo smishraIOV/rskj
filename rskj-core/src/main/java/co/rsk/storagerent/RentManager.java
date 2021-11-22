@@ -17,10 +17,14 @@ public class RentManager {
     private static final Logger logger = LoggerFactory.getLogger(RentManager.class);
 
     private final Set<Trie> trackedNodes = new HashSet<>();
-    private final List<TrieKeySlice> mismatches = new ArrayList<>();
 
+    //note(shree): from trackNodes() below, "mismatch" -> no trie-nodes are found for given (keySlice, trie)
+    // it's possible associated nodes may exist in a different trie / triestore
+    private final List<TrieKeySlice> mismatches = new ArrayList<>();
     /**
      * Tracks nodes from a Trie instance
+     * //comment(shree) what are we assuming about the validity of the given trie?
+     * // e.g. if trie is null, then the error should be about trie passed, and some follow up
      * */
     public void trackNodes(TrieKeySlice trieKeySlice, Trie trie) {
         if(trie != null) {
@@ -35,6 +39,7 @@ public class RentManager {
                 mismatches.add(trieKeySlice);
             }
         } else {
+             //Comment(shree): if trie==null, should error say something about given trie or not actionable? There is a test for this case.
             // logger.error("SR - no nodes to track (key {})", trieKeySlice);
         }
         // logger.error("SR - trackedNodes size = {}, nodes = {}", trackedNodes.size(), printableTrackedNodesSet(trackedNodes));
