@@ -2,7 +2,7 @@ package co.rsk.trie.serializer;
 
 import java.nio.ByteBuffer;
 
-import static co.rsk.trie.Trie.HOP_TRIE_VERSION;
+import static co.rsk.trie.Trie.RSKIP240_TRIE_VERSION;
 import static co.rsk.trie.Trie.TIMESTAMP_SIZE;
 
 public class RSKIP240Serializer implements TrieSerializer {
@@ -18,7 +18,7 @@ public class RSKIP240Serializer implements TrieSerializer {
 
     @Override
     public byte trieVersion() {
-        return (byte) HOP_TRIE_VERSION;
+        return (byte) RSKIP240_TRIE_VERSION;
     }
 
     @Override

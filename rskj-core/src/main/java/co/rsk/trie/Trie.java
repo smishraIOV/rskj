@@ -45,7 +45,6 @@ import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.function.Function;
 
 import static org.ethereum.util.ByteUtil.EMPTY_BYTE_ARRAY;
 
@@ -67,6 +66,7 @@ import static org.ethereum.util.ByteUtil.EMPTY_BYTE_ARRAY;
 public class Trie {
 
     private static final Logger logger = LoggerFactory.getLogger(Trie.class);
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger(Trie.class); // todo(fedejinich) remove this
 
     private static final Profiler profiler = ProfilerFactory.getInstance();
 
@@ -82,15 +82,26 @@ public class Trie {
 
     // a long value exceeds 32 bytes
     public static final int LONG_VALUE = 32 + 1;
+
+    // size of the storage rent timestamp
     public static final int TIMESTAMP_SIZE = Long.BYTES;
+
+    // size of the serialized flags
     public static final int FLAGS_SIZE = Byte.BYTES;
+
+    // size of an embedded node
     public static final int EMBEDDED_CHILD_LENGTH_SIZE = Uint8.BYTES;
+
+    // size of a hashed child
     public static final int CHILD_HASH_SIZE = 32;
 
-    // to represent a non-initialized rent timestamp
+    // represents a non-initialized rent timestamp
     public static final long NO_RENT_TIMESTAMP = -1;
 
-    public static final int HOP_TRIE_VERSION = 0b10000000; // todo(fedejinich) this is actually 128 and -128 (casted to byte)
+    // an rskip240 trie node will serialize with this version
+    public static final int RSKIP240_TRIE_VERSION = 0b10000000;
+
+    // an rskip107 trie node will serialize with this version
     public static final int RSKIP107_TRIE_VERSION = 0b01000000;
 
     // this node associated value, if any
@@ -138,7 +149,7 @@ public class Trie {
     // shared path
     private final TrieKeySlice sharedPath;
 
-    // rent timestamp (checkout rskip240)
+    // storage rent timestamp (checkout rskip240)
     private final long lastRentPaidTimestamp;
 
     // a rent manager to track finds and puts (ideally, this should be part of Repository)
@@ -369,7 +380,7 @@ public class Trie {
         TrieSerializer trieSerializer = new RSKIP107Serializer();
 
         // check if it's an rskip240 trie node
-        if((flags & 0b10000000) == 0b10000000) {
+        if((flags & RSKIP240_TRIE_VERSION) == RSKIP240_TRIE_VERSION) {
             trieSerializer = new RSKIP240Serializer();
         }
 
@@ -381,8 +392,7 @@ public class Trie {
         boolean leftNodeEmbedded = (flags & 0b00000010) == 0b00000010;
         boolean rightNodeEmbedded = (flags & 0b00000001) == 0b00000001;
 
-//        message.getLong()
-        long lastRentPaidTimestamp = trieSerializer.deserializeLastRentPaidTimestamp(message);
+        long lastRentPaidTimestamp = trieSerializer.deserializeLastRentPaidTimestamp(message); // only if it's >= rskip240
 
         TrieKeySlice sharedPath = SharedPathSerializer.deserialize(message, sharedPrefixPresent);
 
@@ -1417,77 +1427,39 @@ public class Trie {
         return new VarInt(bytes, 0);
     }
 
-    // todo(fedejinich) need to use internalPut
+    // todo(fedejinich) remove this useless method and refactor tests
     public Trie setLastRentPaidTimestamp(long lastPaidRentTimestamp) {
         return new Trie(this.store, this.sharedPath, this.value, this.left, this.right,
                 this.valueLength, this.valueHash, this.childrenSize, lastPaidRentTimestamp);
     }
 
-//     todo(fedejinich) we don't need any 'value', it will be removed and replaced by the already existing 'this.value'
+    // updates the rent timestamp from an existing key
     public Trie updateLastRentPaidTimestamp(TrieKeySlice key, long lastRentPaidTimestamp) {
-//        todo(fedejinich) i'm not sure about this part yet, why would we split the trie for updates?
-//        TrieKeySlice commonPath = key.commonPath(sharedPath);
-//        if (commonPath.length() < sharedPath.length()) {
-//            // when we are removing a key we know splitting is not necessary. the key wasn't found at this point.
-//            if (value == null) {
-//                return this;
-//            }
-//
-//            return this.split(commonPath).put(key, value, isRecursiveDelete);
-//        }
-
-        // todo(fedejinich) already exising key
-        //  probably the part that we need for updatingRent
-        if (sharedPath.length() >= key.length()) {
-            // To compare values we need to retrieve the previous value
-            // if not already done so. We could also compare by hash, to avoid retrieval
-            // We do a small optimization here: if sizes are not equal, then values
-            // obviously are not.
-            // todo(fedejinich) why would we need this? is it trying to update a value with the same value?
-            //   for storage rent this should never happen
-//            if (this.valueLength.equals(getDataLength(value)) && Arrays.equals(this.getValue(), value)) {
-//                return this;
-//            }
-
-//            todo(fedejinich) no deletes for this operation
-//            if (isRecursiveDelete) {
-//                return new Trie(this.store, this.sharedPath, null, NO_RENT_TIMESTAMP);
-//            }
-
-//            todo(fedejinich) there are no cases to return a null value
-//            if (isEmptyTrie(getDataLength(value), this.left, this.right)) {
-//                return null;
-//            }
-
-            // todo(fedejinich) updates timestamp from the already existing key
+        if (sharedPath.length() >= key.length()) { // key found
+            // updates last rent paid timestamp
             return new Trie(
                     this.store,
                     this.sharedPath,
-                    cloneArray(this.value), // todo(fedejinich) should be 'this.value' because we are updating the timestamp
+                    cloneArray(this.value),
                     this.left,
                     this.right,
                     getDataLength(this.value),
                     null,
                     this.childrenSize,
-                    lastRentPaidTimestamp); // todo(fedejinich) updates the rent timestamp
+                    lastRentPaidTimestamp); // updates the rent timestamp
         }
 
-//        todo(fedejinich) there won't be new trie leafs
-//        if (isEmptyTrie()) {
-//            return new Trie(this.store, key, cloneArray(value), this.lastRentPaidTimestamp);
-//        }
-
-        // todo(fedejinich) the following part goes down to the next child,
-        //   and tries to update the timestamp (or put a new value for internalPut)
+        // in the following part it goes down to the next child and tries to update the timestamp (if the key is found)
 
         // this bit will be implicit and not present in a shared path
         byte pos = key.get(sharedPath.length());
 
         Trie node = retrieveNode(pos);
-        // todo(fedejinich) this should never happen, it will update timestamp from an already existing trie
-//        if (node == null) {
-//            node = new Trie(this.store);
-//        }
+
+        // this should never happen, it retrieves an existing node
+        if (node == null) {
+            nodeStopper.stop(1);
+        }
 
         TrieKeySlice subKey = key.slice(sharedPath.length() + 1, key.length());
         Trie newNode = node.updateLastRentPaidTimestamp(subKey, lastRentPaidTimestamp);
@@ -1497,14 +1469,13 @@ public class Trie {
             return this;
         }
 
-        // todo(fedejinich) if there are new branches, it creates new nodes references,
-        //  and updates child references (from the bottom up to the trie root)
+        // at this point, they key has already been updated (creating a new branch). Now it creates new node reference,
+        // and updates the parent reference (from the bottom up to the trie root).
 
         VarInt childrenSize = this.childrenSize;
 
         NodeReference newNodeReference = new NodeReference(this.store, newNode, null);
 
-        // todo(techdebt) duplicated code, this should be handled by a method like 'newChildByPos' (same happens at internalPut)
         NodeReference newLeft;
         NodeReference newRight;
         if (pos == 0) {
@@ -1522,17 +1493,10 @@ public class Trie {
                 childrenSize = new VarInt(childrenSize.value - this.right.referenceSize() + newRight.referenceSize());
             }
         }
-        // todo(techdebt) end of duplicated code
-
-//        todo(fedejinich) there are no cases to return null value
-//        if (isEmptyTrie(this.valueLength, newLeft, newRight)) {
-//            return null;
-//        }
 
         // goes up to the trie root with new updated left/right
-        // todo(fedejinich) here we can update also the intermediate nodes by passing newNode.lastRentTimestamp instead of this.lastPaidRentTimestamp
         return new Trie(this.store, this.sharedPath, this.value, newLeft, newRight,
-                this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp); // todo(fedejinich) use the already existing timestamp
+                this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp); // use the already existing timestamp
     }
 
     public long getLastRentPaidTimestamp() {
