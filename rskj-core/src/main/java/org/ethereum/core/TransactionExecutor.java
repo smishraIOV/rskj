@@ -503,6 +503,9 @@ public class TransactionExecutor {
         return receipt;
     }
 
+    // todo(fedejinich) still need to add the rent payment. According to the rskip240, the payment it's done at the end of the tx execution
+    //  therefore this is the right place to do it, but still need to check where is the last place where the current tx spends gas.
+    //  My first thought it's here, right before cacheTrack.commit (519), but i need to do some analysis to confirm that.
     private void finalization() {
         // RSK if local call gas balances must not be changed
         if (localCall) {

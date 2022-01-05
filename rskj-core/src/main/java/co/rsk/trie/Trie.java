@@ -281,7 +281,6 @@ public class Trie {
         }
 
         // it doesn't need to clone value since it's retrieved from store or created from message
-        // todo(fedejinich) an orchid message should never contain a rent timestamp
         return new Trie(store, sharedPath, value, left, right, lvalue, valueHash, null, NO_RENT_TIMESTAMP);
     }
 
