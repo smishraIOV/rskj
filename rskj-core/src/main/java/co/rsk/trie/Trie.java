@@ -793,6 +793,7 @@ public class Trie {
             return null;
         }
 
+        // key found
         if (commonPathLength == key.length()) {
             return this;
         }
@@ -1040,26 +1041,24 @@ public class Trie {
         }
 
         if (isEmptyTrie()) {
-            // todo(fedejinich) is this ok? i think we should set the existing timestamp
-            //   or should we initialize with NO_RENT_TIMESTAMP?
             // new trie leaf
-            return new Trie(this.store, key, cloneArray(value), this.lastRentPaidTimestamp);
-//            return new Trie(this.store, key, cloneArray(value), NO_RENT_TIMESTAMP);
+            return new Trie(this.store, key, cloneArray(value), NO_RENT_TIMESTAMP);
         }
 
         // this bit will be implicit and not present in a shared path
         byte pos = key.get(sharedPath.length());
 
+
         Trie node = retrieveNode(pos);
-        if (node == null) {
+        if (node == null) { // todo(fedejinich) creates a new node. if cannot retrieve from db, it creates a new root...
             node = new Trie(this.store);
         }
 
         TrieKeySlice subKey = key.slice(sharedPath.length() + 1, key.length());
         Trie newNode = node.put(subKey, value, isRecursiveDelete);
 
-        // reference equality
-        if (newNode == node) {
+        // reference equality todo(fedejinich) ...but then it's replaced with the new created leaf node (Trie:1045)
+        if (newNode == node) { // todo(fedejinich) this is cualquiera, or maybe it's just used to create the trie root.
             return this;
         }
 
@@ -1335,7 +1334,9 @@ public class Trie {
                 this.valueLength, this.valueHash, this.childrenSize, lastPaidRentTimestamp);
     }
 
-    // updates the rent timestamp from an existing key
+    /**
+     * updates the rent timestamp from an existing key
+     */
     public Trie updateLastRentPaidTimestamp(TrieKeySlice key, long lastRentPaidTimestamp) {
         if (sharedPath.length() >= key.length()) { // key found
             // updates last rent paid timestamp
