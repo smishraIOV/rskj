@@ -778,7 +778,7 @@ public class Trie {
     public Trie find(byte[] key) {
         TrieKeySlice trieKeySlice = TrieKeySlice.fromKey(key);
         Trie trie = findInTrie(trieKeySlice);
-        trackNodes(trieKeySlice, this);
+        trackNodes(trieKeySlice, this); // todo(fedejinich) it should track if the key was found
         return trie;
     }
 
@@ -911,14 +911,12 @@ public class Trie {
      */
     private Trie put(TrieKeySlice trieKeySlice, byte[] value, boolean isRecursiveDelete) {
         Trie trie = putInTrie(trieKeySlice, value, isRecursiveDelete);
-        // todo(fedejinich) should I track from the newest root? or from the old one? I guess from the new one
-        // logger.error("SR - put. key={}", trieKeySlice.toString());
-        trackNodes(trieKeySlice, this);
+        trackNodes(trieKeySlice, this); // todo(fedejinich) it should track if the key was found
         return trie;
     }
 
     private Trie putInTrie(TrieKeySlice key, byte[] value, boolean isRecursiveDelete) {
-        // First of all, setting the value as an empty byte array is equivalent
+        // first of all, setting the value as an empty byte array is equivalent
         // to removing the key/value. This is because other parts of the trie make
         // this equivalent. Use always null to mark a node for deletion.
         if (value != null && value.length == 0) {
@@ -970,7 +968,7 @@ public class Trie {
         TrieKeySlice newSharedPath = trie.sharedPath.rebuildSharedPath(childImplicitByte, child.sharedPath);
 
         return new Trie(child.store, newSharedPath, child.value, child.left, child.right, child.valueLength,
-                child.valueHash, child.childrenSize, child.lastRentPaidTimestamp); // todo(fedejinich) is this ok?
+                child.valueHash, child.childrenSize, child.lastRentPaidTimestamp);
     }
 
     /**
@@ -1008,7 +1006,6 @@ public class Trie {
         }
 
         // todo(fedejinich) already exising key
-        //  probably the part that we need for updatingRent
         if (sharedPath.length() >= key.length()) {
             // To compare values we need to retrieve the previous value
             // if not already done so. We could also compare by hash, to avoid retrieval
@@ -1027,7 +1024,7 @@ public class Trie {
                 return null;
             }
 
-            // todo(fedejinich) updates the already existing key
+            // updates value from the already existing key
             return new Trie(
                     this.store,
                     this.sharedPath,
@@ -1037,7 +1034,7 @@ public class Trie {
                     getDataLength(value),
                     null,
                     this.childrenSize,
-                    this.lastRentPaidTimestamp); // todo(fedejinich) is this ok?
+                    this.lastRentPaidTimestamp);
         }
 
         if (isEmptyTrie()) {
@@ -1048,14 +1045,13 @@ public class Trie {
         // this bit will be implicit and not present in a shared path
         byte pos = key.get(sharedPath.length());
 
-
         Trie node = retrieveNode(pos);
         if (node == null) { // todo(fedejinich) creates a new node. if cannot retrieve from db, it creates a new root...
             node = new Trie(this.store);
         }
 
         TrieKeySlice subKey = key.slice(sharedPath.length() + 1, key.length());
-        Trie newNode = node.put(subKey, value, isRecursiveDelete);
+        Trie newNode = node.putInTrie(subKey, value, isRecursiveDelete);
 
         // reference equality todo(fedejinich) ...but then it's replaced with the new created leaf node (Trie:1045)
         if (newNode == node) { // todo(fedejinich) this is cualquiera, or maybe it's just used to create the trie root.
@@ -1087,9 +1083,9 @@ public class Trie {
             return null;
         }
 
-        // todo(fedejinich) going up from the already updated/created key, updates the new left or right
+        // todo(fedejinich) going up from the already updated/created/deleted key, updates the new left or right
         return new Trie(this.store, this.sharedPath, this.value, newLeft, newRight,
-                this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp); // todo(fedejinich) is this ok?
+                this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp);
     }
 
     private Trie split(TrieKeySlice commonPath) {

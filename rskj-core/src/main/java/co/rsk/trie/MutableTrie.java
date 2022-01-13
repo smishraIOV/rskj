@@ -59,20 +59,20 @@ public interface MutableTrie {
     // TODO(mc) this method is only used from tests
     Set<ByteArrayWrapper> collectKeys(int size);
 
-    Trie getTrie();
+    Trie getTrie(); // todo(fedejinich) why'd we need to expose the trie?
 
     // This is for optimizing EXTCODESIZE. It returns the size of the value
     // without the need to retrieve the value itself. Implementors can fallback to
     // getting the value and then returning its size.
-    Uint24 getValueLength(byte[] key);
+    Uint24 getValueLength(byte[] key); // todo(fedejinich) this is business logic
 
     // This is for optimizing EXTCODEHASH. It returns the hash of the value
     // without the need to retrieve the value itself.
-    Optional<Keccak256> getValueHash(byte[] key);
+    Optional<Keccak256> getValueHash(byte[] key); // todo(fedejinich) this is business logic
 
     // the key has to match exactly an account key
     // it won't work if it is used with an storage key or any other
-    Iterator<DataWord> getStorageKeys(RskAddress addr);
+    Iterator<DataWord> getStorageKeys(RskAddress addr); // todo(fedejinich) this is business logic
 
     void initRentManager(RentManager rentManager);
 }
