@@ -246,6 +246,12 @@ public class MutableTrieCache implements MutableTrie {
         this.trie.initRentManager(rentManager);
     }
 
+    @Override
+    public void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp) {
+        // todo(fedejinich) it should use the cache
+        this.trie.updateLastRentPaidTimestamp(key, updatedTimestamp);
+    }
+
     private static class StorageKeysIterator implements Iterator<DataWord> {
         private final Iterator<DataWord> keysIterator;
         private final Map<ByteArrayWrapper, byte[]> accountItems;

@@ -225,8 +225,15 @@ public class Storage implements Repository, ProgramListenerAware {
         throw new UnsupportedOperationException();
     }
 
+    // todo(fedejinich) I guess initRentManager & payStorageRent should be unsupported also
+
     @Override
     public void initRentManager(RentManager rentManager) {
         repository.initRentManager(rentManager);
+    }
+
+    @Override
+    public long payStorageRent(RentManager rentManager, long gasLeftover) {
+        return repository.payStorageRent(rentManager, gasLeftover);
     }
 }

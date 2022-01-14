@@ -114,6 +114,11 @@ public class MutableTrieImpl implements MutableTrie {
     }
 
     @Override
+    public void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp) {
+        this.trie = this.trie.updateLastRentPaidTimestamp(key, updatedTimestamp);
+    }
+
+    @Override
     public void deleteRecursive(byte[] key) {
         trie = trie.deleteRecursive(key);
     }

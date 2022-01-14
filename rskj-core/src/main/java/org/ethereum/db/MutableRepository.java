@@ -25,16 +25,20 @@ import co.rsk.crypto.Keccak256;
 import co.rsk.db.MutableTrieCache;
 import co.rsk.db.MutableTrieImpl;
 import co.rsk.storagerent.RentManager;
+import co.rsk.storagerent.RentTrackingElement;
 import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
 import co.rsk.trie.TrieStore;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.NotImplementedException;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.crypto.HashUtil;
 import org.ethereum.crypto.Keccak256Helper;
 import org.ethereum.vm.DataWord;
+import org.ethereum.vm.GasCost;
+import org.ethereum.vm.program.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -377,5 +381,43 @@ public class MutableRepository implements Repository {
     @Override
     public void initRentManager(RentManager rentManager) {
         this.mutableTrie.initRentManager(rentManager);
+    }
+
+    /**
+     * Pays storage rent (RSKIP240)
+     *
+     * @param rentManager contains all the necessary data to pay storage rent
+     * @param gas initial gas amount
+     * @return gas leftover
+     * */
+    // todo(fedejinich)
+    //  - If state changes are reverted at any call depth, due to an error,
+    //     then all associated rent updates must also be reverted
+    //  - If a transaction ends because of a OOG exception or REVERT, then 25% of the storage rent gas used so far
+    //      is consumed as compensation for computation and IO costs.
+    //  - If an error at some call depth is handled in a way that transaction execution can proceed,
+    //      then only the timestamp changes associated with the failed call (and its subcalls) need to be reverted.
+    //      Again, 75% of gas used for rent in the failed call should be refunded to the caller.
+    @Override
+    public long payStorageRent(RentManager rentManager, long gas) {
+        long cumulativeRent = rentManager.cumulativeRent();
+
+        if(gas < cumulativeRent) { // todo(fedejinich) is this the right way to throw an OOG?
+            throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
+        }
+
+        rentManager.getTrackedNodes().forEach(this::updateRentTimestamp);
+
+        return GasCost.subtract(gas, cumulativeRent);
+    }
+
+    /***
+     * Updates all the rent timestamps
+     * @param rentTrackingElement necessary data to perform the rent payment
+     */
+    private void updateRentTimestamp(RentTrackingElement rentTrackingElement) {
+        this.mutableTrie.updateLastRentPaidTimestamp(
+                rentTrackingElement.getKey(),
+                rentTrackingElement.updatedRentTimestamp());
     }
 }

@@ -1,39 +1,27 @@
 package co.rsk.storagerent;
 
-import co.rsk.trie.Trie;
-import co.rsk.trie.TrieKeySlice;
-import com.google.common.annotations.VisibleForTesting;
+import org.ethereum.vm.GasCost;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RentManager {
-    private final Set<Trie> trackedNodes = new HashSet<>();
-    private final List<TrieKeySlice> mismatches = new ArrayList<>();
+    private final List<RentTrackingElement> trackedNodes = new ArrayList<>();
 
-    /**
-     * Tracks nodes from a Trie instance
-     * todo(fedejinch) currently it's tracking all the nodes (including the intermediate ones), but that's not what we want,
-     *   we just want to track the value-containg nodes involved in tx execution
-     * */
-    public void trackNodes(TrieKeySlice trieKeySlice, Trie trie) {
-        if(trie != null) {
-            List<Trie> nodes = trie.findNodes(trieKeySlice);
-            if(nodes != null) {
-                this.trackedNodes.addAll(nodes);
-            } else {
-                // track the mismatched key if is not present in trie
-                mismatches.add(trieKeySlice);
-            }
-        }
+    public long cumulativeRent() {
+        long cumulativeRent = trackedNodes
+                .stream()
+                .map(RentTrackingElement::payableRent)
+                .reduce(GasCost::add)
+                .get(); // todo(fedejinich) should I throw an exception?
+        return cumulativeRent;
     }
 
-    @VisibleForTesting
-    public Set<Trie> getTrackedNodes() {
-        return Collections.unmodifiableSet(trackedNodes);
+    public void trackNode(RentTrackingElement rentTrackingElement) {
+        this.trackedNodes.add(rentTrackingElement);
     }
 
-    @VisibleForTesting
-    public List<TrieKeySlice> getMismatches() {
-        return Collections.unmodifiableList(mismatches);
+    public List<RentTrackingElement> getTrackedNodes() {
+        return this.trackedNodes;
     }
 }

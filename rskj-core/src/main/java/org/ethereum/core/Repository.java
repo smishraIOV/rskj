@@ -146,4 +146,6 @@ public interface Repository extends RepositorySnapshot {
     }
 
     void initRentManager(RentManager rentManager);
+
+    long payStorageRent(RentManager rentManager, long gasLeftover);
 }

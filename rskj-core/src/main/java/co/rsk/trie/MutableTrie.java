@@ -74,5 +74,16 @@ public interface MutableTrie {
     // it won't work if it is used with an storage key or any other
     Iterator<DataWord> getStorageKeys(RskAddress addr); // todo(fedejinich) this is business logic
 
+    /**
+     * Initializes a rent manager
+     * */
     void initRentManager(RentManager rentManager);
+
+    /**
+     * Given a trie key, updates its rent timestamp (RSKIP240).
+     *
+     * @param key a trie key
+     * @param updatedTimestamp an updated timestamp
+     * */
+    void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp);
 }
