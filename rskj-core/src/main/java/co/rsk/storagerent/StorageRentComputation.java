@@ -38,6 +38,7 @@ public class StorageRentComputation {
 
     /**
      * Computes the amount of rent to be paid for trie reads/writes.
+     * The final amount it's determined by the rent cap and rent threshold
      *
      * @param rentDue       a rent due
      * @param rentCap       a maximum gas amount to be pay

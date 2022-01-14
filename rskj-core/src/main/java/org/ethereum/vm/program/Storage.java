@@ -233,7 +233,7 @@ public class Storage implements Repository, ProgramListenerAware {
     }
 
     @Override
-    public long payStorageRent(RentManager rentManager, long gasLeftover) {
-        return repository.payStorageRent(rentManager, gasLeftover);
+    public long payStorageRent(RentManager rentManager, long gasLeftover, long currentBlockTimestamp) {
+        return repository.payStorageRent(rentManager, gasLeftover, currentBlockTimestamp);
     }
 }

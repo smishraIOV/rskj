@@ -248,7 +248,8 @@ public class MutableTrieCache implements MutableTrie {
 
     @Override
     public void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp) {
-        // todo(fedejinich) it should use the cache
+        // todo(fedejinich) the desired branch to get to the key it's already in memory (lazyNode it's already
+        //  initialized at the moment of doing the find/put), do we need to add another cache?
         this.trie.updateLastRentPaidTimestamp(key, updatedTimestamp);
     }
 

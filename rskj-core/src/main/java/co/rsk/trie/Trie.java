@@ -27,6 +27,7 @@ import co.rsk.crypto.Keccak256;
 import co.rsk.metrics.profilers.Metric;
 import co.rsk.metrics.profilers.Profiler;
 import co.rsk.metrics.profilers.ProfilerFactory;
+import co.rsk.storagerent.RentTrackingElement;
 import co.rsk.trie.serializer.RSKIP107Serializer;
 import co.rsk.trie.serializer.RSKIP240Serializer;
 import co.rsk.trie.serializer.TrieSerializer;
@@ -46,6 +47,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static co.rsk.storagerent.RentTrackingElement.TrackingOperation.READ_OPERATION;
+import static co.rsk.storagerent.RentTrackingElement.TrackingOperation.WRITE_OPERATION;
 import static org.ethereum.util.ByteUtil.EMPTY_BYTE_ARRAY;
 
 /**
@@ -778,7 +781,7 @@ public class Trie {
     public Trie find(byte[] key) {
         TrieKeySlice trieKeySlice = TrieKeySlice.fromKey(key);
         Trie trie = findInTrie(trieKeySlice);
-        trackNodes(trieKeySlice, this); // todo(fedejinich) it should track if the key was found
+        trackNodes(trieKeySlice, trie, READ_OPERATION); // todo(fedejinich) it should track if the key was found
         return trie;
     }
 
@@ -910,12 +913,10 @@ public class Trie {
      * @return the new NewTrie containing the tree with the new key value association
      */
     private Trie put(TrieKeySlice trieKeySlice, byte[] value, boolean isRecursiveDelete) {
-        Trie trie = putInTrie(trieKeySlice, value, isRecursiveDelete);
-        trackNodes(trieKeySlice, this); // todo(fedejinich) it should track if the key was found
-        return trie;
+        return putInTrie(trieKeySlice, value, isRecursiveDelete, trieKeySlice);
     }
 
-    private Trie putInTrie(TrieKeySlice key, byte[] value, boolean isRecursiveDelete) {
+    private Trie putInTrie(TrieKeySlice key, byte[] value, boolean isRecursiveDelete, TrieKeySlice originalKey) {
         // first of all, setting the value as an empty byte array is equivalent
         // to removing the key/value. This is because other parts of the trie make
         // this equivalent. Use always null to mark a node for deletion.
@@ -923,7 +924,7 @@ public class Trie {
             value = null;
         }
 
-        Trie trie = this.internalPut(key, value, isRecursiveDelete);
+        Trie trie = this.internalPut(key, value, isRecursiveDelete, originalKey);
 
         // the following code coalesces nodes if needed for delete operation
 
@@ -977,12 +978,10 @@ public class Trie {
      *  should be part of Repository, but for doing that we need to move the find() and put() methods to MutableTrie,
      *  and that's a major refactor.
      * */
-    private void trackNodes(TrieKeySlice trieKeySlice, Trie trie) {
+    private void trackNodes(TrieKeySlice trieKeySlice, Trie trie,
+                            RentTrackingElement.TrackingOperation trackingOperation) {
         if(rentManager != null) { // the rent manager will only be initialized at transaction execution
-            // logger.error("SR - tracking nodes. key = {}", trieKeySlice);
-            this.rentManager.trackNodes(trieKeySlice, trie);
-        } else {
-            // logger.error("SR - rent manager is disabled, there's no need to track nodes");
+            this.rentManager.trackNode(new RentTrackingElement(trieKeySlice, trie, trackingOperation));
         }
     }
 
@@ -994,7 +993,8 @@ public class Trie {
         return new Uint24(value.length);
     }
 
-    private Trie internalPut(TrieKeySlice key, byte[] value, boolean isRecursiveDelete) {
+    // todo(fedejinich) the originalKey parameter might not exist, need to do some analysis
+    private Trie internalPut(TrieKeySlice key, byte[] value, boolean isRecursiveDelete, TrieKeySlice originalKey) {
         TrieKeySlice commonPath = key.commonPath(sharedPath);
         if (commonPath.length() < sharedPath.length()) {
             // when we are removing a key we know splitting is not necessary. the key wasn't found at this point.
@@ -1025,7 +1025,7 @@ public class Trie {
             }
 
             // updates value from the already existing key
-            return new Trie(
+            Trie updatedTrie = new Trie(
                     this.store,
                     this.sharedPath,
                     cloneArray(value),
@@ -1035,6 +1035,12 @@ public class Trie {
                     null,
                     this.childrenSize,
                     this.lastRentPaidTimestamp);
+
+            // todo(fedejinich) check if expanded key == fromKey(key.encode)
+            TrieKeySlice trieKeySlice = TrieKeySlice.fromKey(key.encode());
+            trackNodes(originalKey, updatedTrie, WRITE_OPERATION);
+
+            return updatedTrie; // todo(fedejinich) REFACTOR UPDATELASTRENTPAIDTIMESTAMP TO REUSE THIS METHOD
         }
 
         if (isEmptyTrie()) {
@@ -1051,7 +1057,7 @@ public class Trie {
         }
 
         TrieKeySlice subKey = key.slice(sharedPath.length() + 1, key.length());
-        Trie newNode = node.putInTrie(subKey, value, isRecursiveDelete);
+        Trie newNode = node.putInTrie(subKey, value, isRecursiveDelete, originalKey);
 
         // reference equality todo(fedejinich) ...but then it's replaced with the new created leaf node (Trie:1045)
         if (newNode == node) { // todo(fedejinich) this is cualquiera, or maybe it's just used to create the trie root.
@@ -1332,6 +1338,9 @@ public class Trie {
 
     /**
      * updates the rent timestamp from an existing key
+     *
+     * @param key a trie key
+     * @param lastRentPaidTimestamp a new rent timestamp
      */
     public Trie updateLastRentPaidTimestamp(TrieKeySlice key, long lastRentPaidTimestamp) {
         if (sharedPath.length() >= key.length()) { // key found

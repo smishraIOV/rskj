@@ -399,14 +399,14 @@ public class MutableRepository implements Repository {
     //      then only the timestamp changes associated with the failed call (and its subcalls) need to be reverted.
     //      Again, 75% of gas used for rent in the failed call should be refunded to the caller.
     @Override
-    public long payStorageRent(RentManager rentManager, long gas) {
+    public long payStorageRent(RentManager rentManager, long gas, long currentBlockTimestamp) {
         long cumulativeRent = rentManager.cumulativeRent();
 
         if(gas < cumulativeRent) { // todo(fedejinich) is this the right way to throw an OOG?
             throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
         }
 
-        rentManager.getTrackedNodes().forEach(this::updateRentTimestamp);
+        rentManager.getTrackedNodes().forEach(r -> updateRentTimestamp(r, currentBlockTimestamp));
 
         return GasCost.subtract(gas, cumulativeRent);
     }
@@ -415,9 +415,9 @@ public class MutableRepository implements Repository {
      * Updates all the rent timestamps
      * @param rentTrackingElement necessary data to perform the rent payment
      */
-    private void updateRentTimestamp(RentTrackingElement rentTrackingElement) {
+    private void updateRentTimestamp(RentTrackingElement rentTrackingElement, long currentBlockTimestamp) {
         this.mutableTrie.updateLastRentPaidTimestamp(
                 rentTrackingElement.getKey(),
-                rentTrackingElement.updatedRentTimestamp());
+                rentTrackingElement.updatedRentTimestamp(currentBlockTimestamp));
     }
 }
