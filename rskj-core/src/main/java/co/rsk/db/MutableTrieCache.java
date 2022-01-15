@@ -253,6 +253,11 @@ public class MutableTrieCache implements MutableTrie {
         this.mutableTrie.updateLastRentPaidTimestamp(key, updatedTimestamp);
     }
 
+    @Override
+    public MutableTrie find(byte[] key) {
+        return this.mutableTrie.find(key);
+    }
+
     private static class StorageKeysIterator implements Iterator<DataWord> {
         private final Iterator<DataWord> keysIterator;
         private final Map<ByteArrayWrapper, byte[]> accountItems;

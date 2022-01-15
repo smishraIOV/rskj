@@ -24,6 +24,7 @@ import co.rsk.crypto.Keccak256;
 import co.rsk.storagerent.RentManager;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.db.ByteArrayWrapper;
+import org.ethereum.db.TrieKeyMapper;
 import org.ethereum.vm.DataWord;
 
 import javax.annotation.Nullable;
@@ -89,4 +90,6 @@ public interface MutableTrie {
      * @param updatedTimestamp an updated timestamp
      * */
     void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp);
+
+    MutableTrie find(byte[] key);
 }
