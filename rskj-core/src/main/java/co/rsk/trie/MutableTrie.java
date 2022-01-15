@@ -22,6 +22,7 @@ import co.rsk.core.RskAddress;
 import co.rsk.core.types.ints.Uint24;
 import co.rsk.crypto.Keccak256;
 import co.rsk.storagerent.RentManager;
+import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.db.ByteArrayWrapper;
 import org.ethereum.vm.DataWord;
 
@@ -41,6 +42,7 @@ public interface MutableTrie {
 
     void put(byte[] key, byte[] value);
 
+    @VisibleForTesting
     void put(String key, byte[] value);
 
     // This method optimizes cache-to-cache transfers
@@ -57,6 +59,7 @@ public interface MutableTrie {
     void rollback();
 
     // TODO(mc) this method is only used from tests
+    @VisibleForTesting
     Set<ByteArrayWrapper> collectKeys(int size);
 
     Trie getTrie(); // todo(fedejinich) why'd we need to expose the trie?
