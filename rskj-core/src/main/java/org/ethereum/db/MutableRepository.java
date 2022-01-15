@@ -79,13 +79,14 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void setupContract(RskAddress addr) {
         byte[] prefix = trieKeyMapper.getAccountStoragePrefixKey(addr);
-        mutableTrie.put(prefix, ONE_BYTE_ARRAY);
+        mutableTrie.put(prefix, ONE_BYTE_ARRAY); // todo(fedejinich) should track node after this
     }
 
     @Override
     public synchronized boolean isExist(RskAddress addr) {
         // Here we assume size != 0 means the account exists
-        return mutableTrie.getValueLength(trieKeyMapper.getAccountKey(addr)).compareTo(Uint24.ZERO) > 0;
+        return mutableTrie.getValueLength(trieKeyMapper.getAccountKey(addr)) // todo(fedejinich) should track node after this
+                .compareTo(Uint24.ZERO) > 0;
     }
 
     @Override
@@ -145,7 +146,7 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void saveCode(RskAddress addr, byte[] code) {
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        mutableTrie.put(key, code);
+        mutableTrie.put(key, code); // todo(fedejinich) should track node after this
 
         if (code != null && code.length != 0 && !isExist(addr)) {
             createAccount(addr);
@@ -160,7 +161,8 @@ public class MutableRepository implements Repository {
         }
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        return mutableTrie.getValueLength(key).intValue();
+        return mutableTrie.getValueLength(key) // todo(fedejinich) should track node after this
+                .intValue();
     }
 
     @Override
@@ -175,7 +177,7 @@ public class MutableRepository implements Repository {
         }
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        Optional<Keccak256> valueHash = mutableTrie.getValueHash(key);
+        Optional<Keccak256> valueHash = mutableTrie.getValueHash(key); // todo(fedejinich) should track node after this
 
         //Returning ZERO_HASH is the non standard implementation we had pre RSKIP169 implementation
         //and thus me must honor it.
@@ -195,7 +197,8 @@ public class MutableRepository implements Repository {
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
 
-        return mutableTrie.getValueHash(key).orElse(KECCAK_256_OF_EMPTY_ARRAY);
+        return mutableTrie.getValueHash(key) // todo(fedejinich) should track node after this
+                .orElse(KECCAK_256_OF_EMPTY_ARRAY);
     }
 
     @Override
@@ -210,13 +213,13 @@ public class MutableRepository implements Repository {
         }
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        return mutableTrie.get(key);
+        return mutableTrie.get(key); // todo(fedejinich) should track node after this
     }
 
     @Override
     public boolean isContract(RskAddress addr) {
         byte[] prefix = trieKeyMapper.getAccountStoragePrefixKey(addr);
-        return mutableTrie.get(prefix) != null;
+        return mutableTrie.get(prefix) != null; // todo(fedejinich) should track node after this
     }
 
     @Override
@@ -241,16 +244,16 @@ public class MutableRepository implements Repository {
         // conversion here only applies if this is called directly. If suppose this only occurs in tests, but it can
         // also occur in precompiled contracts that store data directly using this method.
         if (value == null || value.length == 0) {
-            mutableTrie.put(triekey, null);
+            mutableTrie.put(triekey, null); // todo(fedejinich) should track node after this
         } else {
-            mutableTrie.put(triekey, value);
+            mutableTrie.put(triekey, value); // todo(fedejinich) should track node after this
         }
     }
 
     @Override
     public synchronized DataWord getStorageValue(RskAddress addr, DataWord key) {
         byte[] triekey = trieKeyMapper.getAccountStorageKey(addr, key);
-        byte[] value = mutableTrie.get(triekey);
+        byte[] value = mutableTrie.get(triekey); // todo(fedejinich) should track node after this
         if (value == null) {
             return null;
         }
@@ -261,13 +264,13 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized byte[] getStorageBytes(RskAddress addr, DataWord key) {
         byte[] triekey = trieKeyMapper.getAccountStorageKey(addr, key);
-        return mutableTrie.get(triekey);
+        return mutableTrie.get(triekey); // todo(fedejinich) should track node after this
     }
 
     @Override
     public Iterator<DataWord> getStorageKeys(RskAddress addr) {
         // -1 b/c the first bit is implicit in the storage node
-        return mutableTrie.getStorageKeys(addr);
+        return mutableTrie.getStorageKeys(addr); // todo(fedejinich) should track node after this
     }
 
     @Override
@@ -349,7 +352,7 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void updateAccountState(RskAddress addr, final AccountState accountState) {
         byte[] accountKey = trieKeyMapper.getAccountKey(addr);
-        mutableTrie.put(accountKey, accountState.getEncoded());
+        mutableTrie.put(accountKey, accountState.getEncoded()); // todo(fedejinich) should track node after this
     }
 
     @Nonnull
@@ -359,7 +362,7 @@ public class MutableRepository implements Repository {
     }
 
     private byte[] getAccountData(RskAddress addr) {
-        return mutableTrie.get(trieKeyMapper.getAccountKey(addr));
+        return mutableTrie.get(trieKeyMapper.getAccountKey(addr)); // todo(fedejinich) should track node after this
     }
 
     @Override

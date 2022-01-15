@@ -598,6 +598,7 @@ public class Trie {
      * @return the new top node of the trie with the association removed
      *
      */
+    @VisibleForTesting
     public Trie delete(byte[] key) {
         return put(key, null);
     }
@@ -617,6 +618,7 @@ public class Trie {
      *
      * @return the new top node of the trie with the key removed
      */
+    @VisibleForTesting
     public Trie delete(String key) {
         return delete(key.getBytes(StandardCharsets.UTF_8));
     }

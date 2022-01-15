@@ -91,5 +91,6 @@ public interface MutableTrie {
      * */
     void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp);
 
+    @VisibleForTesting
     MutableTrie find(byte[] key);
 }
