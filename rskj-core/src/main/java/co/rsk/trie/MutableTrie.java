@@ -79,11 +79,6 @@ public interface MutableTrie {
     Iterator<DataWord> getStorageKeys(RskAddress addr); // todo(fedejinich) this is business logic
 
     /**
-     * Initializes a rent manager
-     * */
-    void initRentManager(RentManager rentManager);
-
-    /**
      * Given a trie key, updates its rent timestamp (RSKIP240).
      *
      * @param key a trie key

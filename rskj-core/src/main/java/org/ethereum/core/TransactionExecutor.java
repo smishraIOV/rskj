@@ -520,6 +520,7 @@ public class TransactionExecutor {
         if(activations.isActive(RSKIP240)) {
             // pay storage rent
             gasLeftover = track.payStorageRent(rentManager, gasLeftover, executionBlock.getTimestamp());
+            // todo(fedejinich) SHOULD REMOVE THE RENT MANAGER FROM THE TRIE
         }
 
         // todo(fedejinich) if it's a precompiled execution, it commits cache twice, here and at 422, is that ok?
