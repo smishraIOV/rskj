@@ -24,9 +24,11 @@ import co.rsk.core.RskAddress;
 import co.rsk.db.RepositorySnapshot;
 import co.rsk.storagerent.RentManager;
 import co.rsk.trie.Trie;
+import co.rsk.trie.TrieKeySlice;
 import org.ethereum.vm.DataWord;
 
 import java.math.BigInteger;
+import java.util.Map;
 
 public interface Repository extends RepositorySnapshot {
     Trie getTrie();
@@ -147,5 +149,7 @@ public interface Repository extends RepositorySnapshot {
 
     void initRentManager(RentManager rentManager);
 
-    long payStorageRent(RentManager rentManager, long gasLeftover, long currentBlockTimestamp);
+    void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp);
+
+    Map<String, Long> fetchStorageRentData(byte[] key);
 }

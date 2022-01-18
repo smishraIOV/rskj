@@ -21,10 +21,8 @@ package co.rsk.trie;
 import co.rsk.core.RskAddress;
 import co.rsk.core.types.ints.Uint24;
 import co.rsk.crypto.Keccak256;
-import co.rsk.storagerent.RentManager;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.db.ByteArrayWrapper;
-import org.ethereum.db.TrieKeyMapper;
 import org.ethereum.vm.DataWord;
 
 import javax.annotation.Nullable;
@@ -63,20 +61,20 @@ public interface MutableTrie {
     @VisibleForTesting
     Set<ByteArrayWrapper> collectKeys(int size);
 
-    Trie getTrie(); // todo(fedejinich) why'd we need to expose the trie?
+    Trie getTrie();
 
     // This is for optimizing EXTCODESIZE. It returns the size of the value
     // without the need to retrieve the value itself. Implementors can fallback to
     // getting the value and then returning its size.
-    Uint24 getValueLength(byte[] key); // todo(fedejinich) this is business logic
+    Uint24 getValueLength(byte[] key);
 
     // This is for optimizing EXTCODEHASH. It returns the hash of the value
     // without the need to retrieve the value itself.
-    Optional<Keccak256> getValueHash(byte[] key); // todo(fedejinich) this is business logic
+    Optional<Keccak256> getValueHash(byte[] key);
 
     // the key has to match exactly an account key
     // it won't work if it is used with an storage key or any other
-    Iterator<DataWord> getStorageKeys(RskAddress addr); // todo(fedejinich) this is business logic
+    Iterator<DataWord> getStorageKeys(RskAddress addr);
 
     /**
      * Given a trie key, updates its rent timestamp (RSKIP240).
@@ -88,4 +86,8 @@ public interface MutableTrie {
 
     @VisibleForTesting
     MutableTrie find(byte[] key);
+
+    long getNodeSize();
+
+    long getLastRentPaidTimestamp();
 }

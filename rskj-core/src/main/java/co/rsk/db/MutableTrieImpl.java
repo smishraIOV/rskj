@@ -118,6 +118,16 @@ public class MutableTrieImpl implements MutableTrie {
     }
 
     @Override
+    public long getNodeSize() {
+        return trie.getMessageLength();
+    }
+
+    @Override
+    public long getLastRentPaidTimestamp() {
+        return trie.getLastRentPaidTimestamp();
+    }
+
+    @Override
     public void deleteRecursive(byte[] key) {
         trie = trie.deleteRecursive(key);
     }

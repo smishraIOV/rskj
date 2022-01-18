@@ -24,6 +24,7 @@ import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
 import co.rsk.storagerent.RentManager;
 import co.rsk.trie.Trie;
+import co.rsk.trie.TrieKeySlice;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.vm.DataWord;
@@ -33,6 +34,7 @@ import org.ethereum.vm.program.listener.ProgramListenerAware;
 
 import java.math.BigInteger;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 /*
@@ -233,7 +235,12 @@ public class Storage implements Repository, ProgramListenerAware {
     }
 
     @Override
-    public long payStorageRent(RentManager rentManager, long gasLeftover, long currentBlockTimestamp) {
-        return repository.payStorageRent(rentManager, gasLeftover, currentBlockTimestamp);
+    public void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp) {
+        repository.updateLastRentPaidTimestamp(key, updatedRentTimestamp);
+    }
+
+    @Override
+    public Map<String, Long> fetchStorageRentData(byte[] key) {
+        return repository.fetchStorageRentData(key);
     }
 }

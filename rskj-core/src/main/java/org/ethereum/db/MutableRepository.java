@@ -26,16 +26,13 @@ import co.rsk.db.MutableTrieCache;
 import co.rsk.db.MutableTrieImpl;
 import co.rsk.storagerent.RentManager;
 import co.rsk.storagerent.RentTrackingElement;
-import co.rsk.storagerent.RentTrackingElement.TrackingOperation;
+import co.rsk.storagerent.RentTrackingElement.OperationType;
 import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
 import co.rsk.trie.TrieStore;
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.NotImplementedException;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
-import org.ethereum.crypto.HashUtil;
 import org.ethereum.crypto.Keccak256Helper;
 import org.ethereum.vm.DataWord;
 import org.ethereum.vm.GasCost;
@@ -47,7 +44,7 @@ import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
 
-import static co.rsk.storagerent.RentTrackingElement.TrackingOperation.*;
+import static co.rsk.storagerent.RentTrackingElement.OperationType.*;
 
 public class MutableRepository implements Repository {
     private static final Logger logger = LoggerFactory.getLogger("repository");
@@ -83,13 +80,13 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void setupContract(RskAddress addr) {
         byte[] prefix = trieKeyMapper.getAccountStoragePrefixKey(addr);
-        internalPut(prefix, ONE_BYTE_ARRAY); // todo(fedejinich) should track node after this
+        internalPut(prefix, ONE_BYTE_ARRAY);
     }
 
     @Override
     public synchronized boolean isExist(RskAddress addr) {
         // Here we assume size != 0 means the account exists
-        return internalGetValueLength(trieKeyMapper.getAccountKey(addr)) // todo(fedejinich) should track node after this
+        return internalGetValueLength(trieKeyMapper.getAccountKey(addr))
                 .compareTo(Uint24.ZERO) > 0;
     }
 
@@ -150,7 +147,7 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void saveCode(RskAddress addr, byte[] code) {
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        internalPut(key, code); // todo(fedejinich) should track node after this
+        internalPut(key, code);
 
         if (code != null && code.length != 0 && !isExist(addr)) {
             createAccount(addr);
@@ -165,7 +162,7 @@ public class MutableRepository implements Repository {
         }
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        return internalGetValueLength(key) // todo(fedejinich) should track node after this
+        return internalGetValueLength(key)
                 .intValue();
     }
 
@@ -181,7 +178,7 @@ public class MutableRepository implements Repository {
         }
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        Optional<Keccak256> valueHash = internalGetValueHash(key); // todo(fedejinich) should track node after this
+        Optional<Keccak256> valueHash = internalGetValueHash(key);
 
         //Returning ZERO_HASH is the non standard implementation we had pre RSKIP169 implementation
         //and thus me must honor it.
@@ -201,7 +198,7 @@ public class MutableRepository implements Repository {
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
 
-        return internalGetValueHash(key) // todo(fedejinich) should track node after this
+        return internalGetValueHash(key)
                 .orElse(KECCAK_256_OF_EMPTY_ARRAY);
     }
 
@@ -217,13 +214,13 @@ public class MutableRepository implements Repository {
         }
 
         byte[] key = trieKeyMapper.getCodeKey(addr);
-        return internalGet(key); // todo(fedejinich) should track node after this
+        return internalGet(key);
     }
 
     @Override
     public boolean isContract(RskAddress addr) {
         byte[] prefix = trieKeyMapper.getAccountStoragePrefixKey(addr);
-        return internalGet(prefix) != null; // todo(fedejinich) should track node after this
+        return internalGet(prefix) != null;
     }
 
     @Override
@@ -248,16 +245,16 @@ public class MutableRepository implements Repository {
         // conversion here only applies if this is called directly. If suppose this only occurs in tests, but it can
         // also occur in precompiled contracts that store data directly using this method.
         if (value == null || value.length == 0) {
-            internalPut(triekey, null); // todo(fedejinich) should track node after this
+            internalPut(triekey, null);
         } else {
-            internalPut(triekey, value); // todo(fedejinich) should track node after this
+            internalPut(triekey, value);
         }
     }
 
     @Override
     public synchronized DataWord getStorageValue(RskAddress addr, DataWord key) {
         byte[] triekey = trieKeyMapper.getAccountStorageKey(addr, key);
-        byte[] value = internalGet(triekey); // todo(fedejinich) should track node after this
+        byte[] value = internalGet(triekey);
         if (value == null) {
             return null;
         }
@@ -268,13 +265,13 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized byte[] getStorageBytes(RskAddress addr, DataWord key) {
         byte[] triekey = trieKeyMapper.getAccountStorageKey(addr, key);
-        return internalGet(triekey); // todo(fedejinich) should track node after this
+        return internalGet(triekey);
     }
 
     @Override
     public Iterator<DataWord> getStorageKeys(RskAddress addr) {
         // -1 b/c the first bit is implicit in the storage node
-        return internalGetStorageKeys(addr); // todo(fedejinich) should track node after this
+        return internalGetStorageKeys(addr);
     }
 
     @Override
@@ -356,7 +353,7 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void updateAccountState(RskAddress addr, final AccountState accountState) {
         byte[] accountKey = trieKeyMapper.getAccountKey(addr);
-       internalPut(accountKey, accountState.getEncoded()); // todo(fedejinich) should track node after this
+        internalPut(accountKey, accountState.getEncoded());
     }
 
     @Nonnull
@@ -366,7 +363,7 @@ public class MutableRepository implements Repository {
     }
 
     private byte[] getAccountData(RskAddress addr) {
-        return internalGet(trieKeyMapper.getAccountKey(addr)); // todo(fedejinich) should track node after this
+        return internalGet(trieKeyMapper.getAccountKey(addr));
     }
 
     @Override
@@ -374,42 +371,21 @@ public class MutableRepository implements Repository {
         this.rentManager = rentManager;
     }
 
-    /**
-     * Pays storage rent (RSKIP240)
-     *
-     * @param rentManager contains all the necessary data to pay storage rent
-     * @param gas initial gas amount
-     * @return gas leftover
-     * */
-    // todo(fedejinich)
-    //  - If state changes are reverted at any call depth, due to an error,
-    //     then all associated rent updates must also be reverted
-    //  - If a transaction ends because of a OOG exception or REVERT, then 25% of the storage rent gas used so far
-    //      is consumed as compensation for computation and IO costs.
-    //  - If an error at some call depth is handled in a way that transaction execution can proceed,
-    //      then only the timestamp changes associated with the failed call (and its subcalls) need to be reverted.
-    //      Again, 75% of gas used for rent in the failed call should be refunded to the caller.
     @Override
-    public long payStorageRent(RentManager rentManager, long gas, long currentBlockTimestamp) {
-        long cumulativeRent = rentManager.cumulativeRent();
-
-        if(gas < cumulativeRent) { // todo(fedejinich) is this the right way to throw an OOG?
-            throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
-        }
-
-        rentManager.getTrackedNodes().forEach(r -> updateRentTimestamp(r, currentBlockTimestamp));
-
-        return GasCost.subtract(gas, cumulativeRent);
+    public void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp) {
+        // todo(fedejinich) I guess I can avoid TrieKeySlice.fromKey(key)
+        this.mutableTrie.updateLastRentPaidTimestamp(TrieKeySlice.fromKey(key), updatedRentTimestamp);
     }
 
-    /***
-     * Updates all the rent timestamps
-     * @param rentTrackingElement necessary data to perform the rent payment
-     */
-    private void updateRentTimestamp(RentTrackingElement rentTrackingElement, long currentBlockTimestamp) {
-        this.mutableTrie.updateLastRentPaidTimestamp(
-                rentTrackingElement.getKey(),
-                rentTrackingElement.updatedRentTimestamp(currentBlockTimestamp));
+    @Override
+    public Map<String, Long> fetchStorageRentData(byte[] key) {
+        MutableTrie mutableTrie = this.mutableTrie.find(key);
+
+        Map<String, Long> storageRentData = new HashMap<>();
+        storageRentData.put("nodeSize", mutableTrie.getNodeSize());
+        storageRentData.put("lastRentPaidTimestamp", mutableTrie.getLastRentPaidTimestamp());
+
+        return storageRentData;
     }
 
     // Internal methods contains storage rent tracking
@@ -452,7 +428,7 @@ public class MutableRepository implements Repository {
     private Iterator<DataWord> internalGetStorageKeys(RskAddress addr) {
         Iterator<DataWord> storageKeys = mutableTrie.getStorageKeys(addr);
 
-        if(!storageKeys.equals(Collections.emptyIterator())) { // todo(fedejinich) check this
+        if(!storageKeys.equals(Collections.emptyIterator())) { // todo(fedejinich) is this ok?
             trackNode(trieKeyMapper.getAccountStoragePrefixKey(addr), READ_OPERATION);
         }
 
@@ -460,18 +436,22 @@ public class MutableRepository implements Repository {
     }
 
     /**
-     * Track a value-containing node.
+     * Tracks a value-containing node.
      * Tracked nodes are then used to pay the storage rent (RSKIP240).
      *
      * @param key an existing trie key
+     * @param operationType an operation type (read/write)
+//     * @param loadsContractCode if the operation loads contract code
      * */
-    private void trackNode(byte[] key, TrackingOperation trackingOperation) {
+    private void trackNode(byte[] key, OperationType operationType) {
         // todo(fedejinich) need to implement tracking just with key and trackingOperation
         //   in this way we will need to update the timestamps in a sequential order.
         //   This may lead into OOG during the timestamp update.
         //   In the other approach (tracking directly from Trie class) we tracked nodes and
         //   gathered extra data (such as lastRentPaidTimestamp), with this extra data we could
         //   check for OOG before doing the updates, preventing state changes.
-        throw new NotImplementedException("need to implemnt this");
+        if(rentManager != null) {
+            this.rentManager.trackNode(new RentTrackingElement(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+        }
     }
 }

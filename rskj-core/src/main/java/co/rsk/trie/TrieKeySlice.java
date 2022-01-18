@@ -17,8 +17,6 @@
  */
 package co.rsk.trie;
 
-import org.ethereum.rpc.TypeConverter;
-
 import java.util.Arrays;
 
 /**
@@ -122,10 +120,5 @@ public class TrieKeySlice {
 
     public static TrieKeySlice empty() {
         return new TrieKeySlice(new byte[0], 0, 0);
-    }
-
-    @Override
-    public String toString() {
-        return TypeConverter.toJsonHex(this.encode()).substring(2); // todo(fedejinich) remove this
     }
 }

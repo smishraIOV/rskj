@@ -65,7 +65,6 @@ import static org.ethereum.util.ByteUtil.EMPTY_BYTE_ARRAY;
 public class Trie {
 
     private static final Logger logger = LoggerFactory.getLogger(Trie.class);
-    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger(Trie.class); // todo(fedejinich) remove this
 
     private static final Profiler profiler = ProfilerFactory.getInstance();
 
@@ -806,6 +805,7 @@ public class Trie {
         boolean hasLongVal = this.hasLongValue();
         TrieSerializer trieSerializer = new RSKIP107Serializer();
 
+        // nodes with rent timestamp should be serialized differently, so we use the RSKIP240 serializer
         if(lastRentPaidTimestamp != NO_RENT_TIMESTAMP) {
             trieSerializer = new RSKIP240Serializer();
         }
@@ -1296,12 +1296,6 @@ public class Trie {
 
         message.get(bytes);
         return new VarInt(bytes, 0);
-    }
-
-    // todo(fedejinich) remove this useless method and refactor tests
-    public Trie setLastRentPaidTimestamp(long lastPaidRentTimestamp) {
-        return new Trie(this.store, this.sharedPath, this.value, this.left, this.right,
-                this.valueLength, this.valueHash, this.childrenSize, lastPaidRentTimestamp);
     }
 
     /**

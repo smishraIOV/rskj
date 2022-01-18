@@ -57,7 +57,7 @@ public class TransactionExecutorFactory {
         this.blockTxSignatureCache = blockTxSignatureCache;
     }
 
-    public TransactionExecutor newInstance( // todo should be named 'newLoacalExecutionInstance'
+    public TransactionExecutor newInstance(
             Transaction tx,
             int txindex,
             RskAddress coinbase,
