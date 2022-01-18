@@ -905,7 +905,7 @@ public class Trie {
      * @return the new NewTrie containing the tree with the new key value association
      */
     private Trie put(TrieKeySlice key, byte[] value, boolean isRecursiveDelete) {
-        // first of all, setting the value as an empty byte array is equivalent
+        // First of all, setting the value as an empty byte array is equivalent
         // to removing the key/value. This is because other parts of the trie make
         // this equivalent. Use always null to mark a node for deletion.
         if (value != null && value.length == 0) {
@@ -921,7 +921,6 @@ public class Trie {
             return trie;
         }
 
-        // todo(techdebt) this doesn't make sense: internalPut returns null for empty tries
         if (trie.isEmptyTrie()) {
             return null;
         }
@@ -979,7 +978,7 @@ public class Trie {
             return this.split(commonPath).put(key, value, isRecursiveDelete);
         }
 
-        // todo(fedejinich) already exising key
+        // key found
         if (sharedPath.length() >= key.length()) {
             // To compare values we need to retrieve the previous value
             // if not already done so. We could also compare by hash, to avoid retrieval
@@ -990,7 +989,6 @@ public class Trie {
             }
 
             if (isRecursiveDelete) {
-                // todo(fedejinich) a recursive delete will also clear the rent timestamp
                 return new Trie(this.store, this.sharedPath, null, NO_RENT_TIMESTAMP);
             }
 
@@ -1027,8 +1025,10 @@ public class Trie {
         TrieKeySlice subKey = key.slice(sharedPath.length() + 1, key.length());
         Trie newNode = node.put(subKey, value, isRecursiveDelete);
 
-        // reference equality todo(fedejinich) ...but then it's replaced with the new created leaf node (Trie:1045)
-        if (newNode == node) { // todo(fedejinich) this is cualquiera, or maybe it's just used to create the trie root.
+        // reference equality
+        // todo(fedejinich) ...but then it's replaced with the new created leaf node (Trie:1045).
+        //  Is it just used to create the trie root?.
+        if (newNode == node) {
             return this;
         }
 
@@ -1057,7 +1057,7 @@ public class Trie {
             return null;
         }
 
-        // todo(fedejinich) going up from the already updated/created/deleted key, updates the new left or right
+        // going up from the already updated/created/deleted key, updates the new left or right
         return new Trie(this.store, this.sharedPath, this.value, newLeft, newRight,
                 this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp);
     }
@@ -1305,7 +1305,8 @@ public class Trie {
      * @param lastRentPaidTimestamp a new rent timestamp
      */
     public Trie updateLastRentPaidTimestamp(TrieKeySlice key, long lastRentPaidTimestamp) {
-        if (sharedPath.length() >= key.length()) { // key found
+        // key found
+        if (sharedPath.length() >= key.length()) {
             // updates last rent paid timestamp
             return new Trie(
                     this.store,
@@ -1316,7 +1317,7 @@ public class Trie {
                     getDataLength(this.value),
                     null,
                     this.childrenSize,
-                    lastRentPaidTimestamp); // updates the rent timestamp
+                    lastRentPaidTimestamp); // updated timestamp
         }
 
         // in the following part it goes down to the next child and tries to update the timestamp (if the key is found)
@@ -1364,7 +1365,7 @@ public class Trie {
             }
         }
 
-        // goes up to the trie root with new updated left/right
+        // going up to the trie root with new updated left/right
         return new Trie(this.store, this.sharedPath, this.value, newLeft, newRight,
                 this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp); // use the already existing timestamp
     }
