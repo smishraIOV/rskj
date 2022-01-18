@@ -1673,7 +1673,7 @@ public class Trie {
     }
 
     @Nullable
-    public List<Trie> findNodes(TrieKeySlice key) {
+    private List<Trie> findNodes(TrieKeySlice key) {
         if (sharedPath.length() > key.length()) {
             return null;
         }
