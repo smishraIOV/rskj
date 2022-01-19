@@ -3,20 +3,25 @@ package org.ethereum.core;
 import co.rsk.config.VmConfig;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
+import co.rsk.test.builders.AccountBuilder;
+import co.rsk.test.builders.TransactionBuilder;
 import org.ethereum.TestUtils;
 import org.ethereum.config.Constants;
 import org.ethereum.config.blockchain.upgrades.ActivationConfig;
 import org.ethereum.config.blockchain.upgrades.ActivationConfigsForTest;
+import org.ethereum.config.blockchain.upgrades.ConsensusRule;
 import org.ethereum.db.BlockStore;
 import org.ethereum.db.MutableRepository;
 import org.ethereum.db.ReceiptStore;
 import org.ethereum.vm.DataWord;
+import org.ethereum.vm.GasCost;
 import org.ethereum.vm.PrecompiledContracts;
 import org.ethereum.vm.program.invoke.ProgramInvokeFactory;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -284,6 +289,52 @@ public class TransactionExecutorTest {
         }
 
         assertFalse(blockTxSignatureCache.containsTx(transaction));
+    }
+
+    @Test
+    public void isStorageRentEnabled() {
+        TransactionBuilder transactionBuilder = new TransactionBuilder().sender(new AccountBuilder().name("something").build());
+        Transaction transaction = transactionBuilder
+                .gasLimit(new BigInteger(String.valueOf(GasCost.TRANSACTION + 1))) // over the expected limit
+                .data("someData".getBytes(StandardCharsets.UTF_8))
+                .build();
+        TransactionExecutor transactionExecutor = buildTransactionExecutor(transaction, activationConfig);
+
+        assertTrue(transactionExecutor.isStorageRentEnabled());
+
+        transaction = transactionBuilder
+                .gasLimit(new BigInteger(String.valueOf(GasCost.TRANSACTION))) // just a value transfer
+                .data("someData".getBytes(StandardCharsets.UTF_8))
+                .build();
+        transactionExecutor = buildTransactionExecutor(transaction, activationConfig);
+
+        assertFalse(transactionExecutor.isStorageRentEnabled());
+
+        transaction = transactionBuilder
+                .gasLimit(new BigInteger(String.valueOf(GasCost.TRANSACTION + 1))) // over the expected limit
+                .data(new byte[]{}) // no data
+                .build();
+        transactionExecutor = buildTransactionExecutor(transaction, activationConfig);
+
+        assertFalse(transactionExecutor.isStorageRentEnabled());
+
+        transaction = transactionBuilder
+                .gasLimit(new BigInteger(String.valueOf(GasCost.TRANSACTION + 1))) // over the expected limit
+                .data("someData".getBytes(StandardCharsets.UTF_8))
+                .build();
+        transactionExecutor = buildTransactionExecutor(transaction, ActivationConfigsForTest.allBut(ConsensusRule.RSKIP240));
+
+        assertFalse(transactionExecutor.isStorageRentEnabled());
+    }
+
+    private TransactionExecutor buildTransactionExecutor(Transaction transaction, ActivationConfig activationConfig) {
+        return new TransactionExecutor(
+                constants, activationConfig, transaction, txIndex, rskAddress,
+                repository, blockStore, receiptStore, blockFactory,
+                programInvokeFactory, executionBlock, gasUsedInTheBlock, vmConfig,
+                true, precompiledContracts, deletedAccounts,
+                mock(SignatureCache.class)
+        );
     }
 
     private boolean executeValidTransaction(Transaction transaction, BlockTxSignatureCache blockTxSignatureCache) {

@@ -44,14 +44,14 @@ public class RentTrackingElement {
         return this.key;
     }
 
-    public long getNodeSize() {
+    private long getNodeSize() {
         if(nodeSize == null) {
             throw new IllegalStateException("no nodeSize, initialize it by fetching storage rent data with the RentManager");
         }
         return nodeSize;
     }
 
-    public long getLastRentPaidTimestamp() {
+    private long getLastRentPaidTimestamp() {
         if(lastRentPaidTimestamp == null) {
             throw new IllegalStateException("no lastRentPaidTimestamp, initialize it by fetching storage rent data with the RentManager");
         }

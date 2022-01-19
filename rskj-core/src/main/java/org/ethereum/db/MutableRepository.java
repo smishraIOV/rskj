@@ -444,12 +444,6 @@ public class MutableRepository implements Repository {
 //     * @param loadsContractCode if the operation loads contract code
      * */
     private void trackNode(byte[] key, OperationType operationType) {
-        // todo(fedejinich) need to implement tracking just with key and trackingOperation
-        //   in this way we will need to update the timestamps in a sequential order.
-        //   This may lead into OOG during the timestamp update.
-        //   In the other approach (tracking directly from Trie class) we tracked nodes and
-        //   gathered extra data (such as lastRentPaidTimestamp), with this extra data we could
-        //   check for OOG before doing the updates, preventing state changes.
         if(rentManager != null) {
             this.rentManager.trackNode(new RentTrackingElement(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
         }

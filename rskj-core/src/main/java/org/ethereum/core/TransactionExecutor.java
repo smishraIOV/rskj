@@ -567,10 +567,6 @@ public class TransactionExecutor {
         logger.trace("tx finalization done");
     }
 
-    private boolean isStorageRentEnabled() {
-        return activations.isActive(RSKIP240);
-    }
-
     private void localCallFinalization() {
         if(result == null) {
             logger.warn("this is unexpected, a transaction executor should always have a non null result");
@@ -611,6 +607,13 @@ public class TransactionExecutor {
         logger.trace("tx listener for gas estimation done");
 
         logger.trace("tx finalization for gas estimation done");
+    }
+
+    @VisibleForTesting
+    public boolean isStorageRentEnabled() {
+        return activations.isActive(RSKIP240) &&
+                !isEmpty(tx.getData()) &&
+                GasCost.toGas(tx.getGasLimit()) > GasCost.TRANSACTION;
     }
 
     private TransactionExecutionSummary buildTransactionExecutionSummary(TransactionExecutionSummary.Builder summaryBuilder, long gasRefund) {
