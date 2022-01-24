@@ -20,6 +20,7 @@ public class ValueContainingNode {
     private Long nodeSize;
     private Long lastRentPaidTimestamp;
 
+    // todo(fedejinich) WRITE OPERATION & LOADS CONTRACT CODE, IS THAT AN ILLEGAL STATE?
     public ValueContainingNode(TrieKeySlice key, OperationType operationType, boolean loadsContractCode) {
         this.key = key;
         this.operationType = operationType;
@@ -39,6 +40,7 @@ public class ValueContainingNode {
 
     /**
      * Calculates the new timestamp after paying the rent
+     * @return a new updated timestamp
      * */
     public long updatedRentTimestamp(long currentBlockTimsetamp) {
         return computeNewTimestamp(
@@ -69,17 +71,17 @@ public class ValueContainingNode {
         return lastRentPaidTimestamp;
     }
 
-    public void setNodeSize(long nodeSize) {
+    public void setNodeSize(Long nodeSize) {
         this.nodeSize = nodeSize;
     }
 
-    public void setLastRentPaidTimestamp(long lastRentPaidTimestamp) {
+    public void setLastRentPaidTimestamp(Long lastRentPaidTimestamp) {
         this.lastRentPaidTimestamp = lastRentPaidTimestamp;
     }
 
     private long duration(long currentBlockTimsetamp) {
         // todo(fedejinich) is this the right way to calculate the duration?
-        return currentBlockTimsetamp - this.lastRentPaidTimestamp;
+        return currentBlockTimsetamp - this.getLastRentPaidTimestamp();
     }
 
     private long rentThreshold(boolean loadsContractCode) {

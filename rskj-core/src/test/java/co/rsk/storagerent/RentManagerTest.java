@@ -67,8 +67,6 @@ public class RentManagerTest {
                     "not enough gas to pay storage rent. gas: {}, gasNeeded: {}",
                     notEnoughGas, 30000);
             assertEquals(expectedMessage, e.getMessage());
-        } catch (Exception e) {
-            fail("this is unexpected");
         }
     }
 
