@@ -76,12 +76,12 @@ public class StorageRentComputation {
      *
      * @param nodeSize a node size (expressed in bytes)
      * @param rentDue rent due (gas)
-     * @param lastPaidTimestamp a timestamp corresponding to the last payment (expressed in seconds)
+     * @param lastPaidTimestamp a timestamp corresponding to the last rent payment (expressed in seconds)
      * @param currentBlockTimestamp the current block timestamp
-     * @param rentCap a gas cap (useful to partially advance the last payment)
+     * @param rentCap a gas cap (useful to partially advance the timestamp)
      * @param rentThreshold a gas threshold
      *
-     * @return the next timestamp (it can be the same if it doesn't reach the threshold)
+     * @return the new timestamp (it can be the same if it doesn't reach the threshold)
      * */
     public static long computeNewTimestamp(long nodeSize, long rentDue, long lastPaidTimestamp,
                                            long currentBlockTimestamp, long rentCap, long rentThreshold) {
@@ -96,7 +96,7 @@ public class StorageRentComputation {
             return currentBlockTimestamp;
         }
 
-        // if rent due exceeds cap, it partially advances the last paid timestamp
+        // partially advances the timestamp if rent due exceeds cap
         Double timePaid = Math.floor(rentCap / (nodeSize * RENTAL_RATE));
         return lastPaidTimestamp + timePaid.longValue();
     }

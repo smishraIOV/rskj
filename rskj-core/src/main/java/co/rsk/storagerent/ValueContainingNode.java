@@ -2,10 +2,14 @@ package co.rsk.storagerent;
 
 import co.rsk.trie.TrieKeySlice;
 
-import static co.rsk.storagerent.RentTrackingElement.OperationType.WRITE_OPERATION;
+import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
 import static co.rsk.storagerent.StorageRentComputation.*;
 
-public class RentTrackingElement {
+/**
+ * Represents an existing value-containing trie node.
+ * Given an existing trie key, returns the relevant data for paying the storage rent.
+ * */
+public class ValueContainingNode {
 
     public enum OperationType { WRITE_OPERATION, READ_OPERATION }
 
@@ -16,19 +20,26 @@ public class RentTrackingElement {
     private Long nodeSize;
     private Long lastRentPaidTimestamp;
 
-    public RentTrackingElement(TrieKeySlice key, OperationType operationType, boolean loadsContractCode) {
+    public ValueContainingNode(TrieKeySlice key, OperationType operationType, boolean loadsContractCode) {
         this.key = key;
         this.operationType = operationType;
         this.loadsContractCode = loadsContractCode;
     }
 
-    public long payableRent() {
+    /**
+     * Calculates the payable rent amount (the total amount it's limited by the rent cap)
+     * @return the rent amount expressed in gas units
+     * */
+    public long payableRent(long currentBlockTimestamp) {
         return computeRent(
-                rentDue(getNodeSize(), getLastRentPaidTimestamp()),
+                rentDue(getNodeSize(), duration(currentBlockTimestamp)),
                 rentCap(loadsContractCode),
                 rentThreshold(loadsContractCode));
     }
 
+    /**
+     * Calculates the new timestamp after paying the rent
+     * */
     public long updatedRentTimestamp(long currentBlockTimsetamp) {
         return computeNewTimestamp(
                 getNodeSize(),
@@ -67,8 +78,7 @@ public class RentTrackingElement {
     }
 
     private long duration(long currentBlockTimsetamp) {
-        // todo(fedejinich) is this the right way to calculate the duration or should I do it with the current system time?
-        //   is it safe to do it the current system time?
+        // todo(fedejinich) is this the right way to calculate the duration?
         return currentBlockTimsetamp - this.lastRentPaidTimestamp;
     }
 

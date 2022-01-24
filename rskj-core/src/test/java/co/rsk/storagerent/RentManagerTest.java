@@ -1,126 +1,121 @@
 package co.rsk.storagerent;
 
-import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
-import org.ethereum.db.TrieKeyMapper;
+import org.ethereum.core.Repository;
+import org.ethereum.vm.program.Program;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
-import static org.bouncycastle.util.encoders.Hex.decode;
+import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
+import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class RentManagerTest {
 
+    private static final boolean LOADS_CONTRACT = false;
+    public static final long CURRENT_BLOCK_TIMESTAMP = new GregorianCalendar(2022, 1, 30)
+            .getTime()
+            .getTime();
+
     private RentManager rentManager;
+    private List<ValueContainingNode> testNodes;
+    private ArrayList<ValueContainingNode> valueContainingNodes;
 
     @Before
     public void setup() {
-        this.rentManager = new RentManager();
+        valueContainingNodes = spy(new ArrayList<>());
+        rentManager = new RentManager(valueContainingNodes);
+        testNodes = testNodes();
+    }
+    
+    @Test
+    public void trackNode_shouldAddNodesToTheList() {
+        trackValueContainingNodes(rentManager, testNodes());
+        assertEquals(6, rentManager.getValueContainingNode().size());
     }
 
     @Test
-    public void trackNodes() {
-        Trie trie = buildTestTrie();
+    public void payStorageRent_oneDayWithoutPaying_shouldPayMaximumRent() {
+        Repository repository = spy(Repository.class);
+        mockStorageRentData(repository, testNodes);
 
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008000")),trie);
-        List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
+        trackValueContainingNodes(rentManager, testNodes);
 
-        assertFalse(trackedNodes.isEmpty());
-        assertEquals(4, trackedNodes.size());
-        assertArrayEquals(new byte[] { 0x04 }, trackedNodes.get(0).getValue()); // key 0a0080
-        assertArrayEquals(new byte[] { 0x03 }, trackedNodes.get(1).getValue()); // key 0a008000
-        assertArrayEquals(new byte[] { 0x06 }, trackedNodes.get(2).getValue()); // key 0a
-        assertArrayEquals(new byte[] { 0x02 }, trackedNodes.get(3).getValue()); // key 0a00
+        long gasLeftover = rentManager.payStorageRent(100000, CURRENT_BLOCK_TIMESTAMP, repository);
+
+        verify(repository, times(testNodes.size())).updateLastRentPaidTimestamp(any(), anyLong());
+        assertEquals(70000, gasLeftover);
     }
 
     @Test
-    public void trackNodes_nonExistentKey() {
-        Trie trie = buildTestTrie();
+    public void payStorageRent_notEnoughGas_shouldThrowOOGException() {
+        Repository repository = spy(Repository.class);
+        mockStorageRentData(repository, testNodes);
 
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("1a")), trie);
-        List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
+        trackValueContainingNodes(rentManager, testNodes);
 
-        assertTrue(trackedNodes.isEmpty());
-        assertEquals(1, rentManager.getMismatches().size());
-        assertArrayEquals(TrieKeySlice.fromKey(decode("1a")).encode(), rentManager.getMismatches().get(0).encode());
+        int notEnoughGas = 29999;
+
+        try{
+            rentManager.payStorageRent(notEnoughGas, CURRENT_BLOCK_TIMESTAMP, repository);
+        } catch (Program.OutOfGasException e) {
+            String expectedMessage = String.format(
+                    "not enough gas to pay storage rent. gas: {}, gasNeeded: {}",
+                    notEnoughGas, 30000);
+            assertEquals(expectedMessage, e.getMessage());
+        } catch (Exception e) {
+            fail("this is unexpected");
+        }
     }
 
-    @Test
-    public void trackNodes_containsSomePartOfTheKey() { // but in the end it's a nonexistent key
-        Trie trie = buildTestTrie();
+    private void mockStorageRentData(Repository repository, List<ValueContainingNode> testNodes) {
+        testNodes.forEach(t -> {
+            Map<String, Long> storageRentData = new HashMap<>();
+            storageRentData.put("nodeSize", 32L); // maximum storage cell size
+            storageRentData.put("lastRentPaidTimestamp",
+                    new GregorianCalendar(2022, 1, 29).getTime().getTime());
 
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008001")), trie);
-        List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
-
-        assertTrue(trackedNodes.isEmpty());
-        assertEquals(1, rentManager.getMismatches().size());
-        assertArrayEquals(TrieKeySlice.fromKey(decode("0a008001")).encode(), rentManager.getMismatches().get(0).encode());
+            when(repository.fetchStorageRentData(t.getKey().encode())).thenReturn(storageRentData);
+        });
     }
 
-    @Test
-    public void trackNodes_nullTrie() {
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008000")), null);
-        List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
-
-        assertTrue(trackedNodes.isEmpty());
-        assertEquals(0, rentManager.getMismatches().size());
+    private void trackValueContainingNodes(RentManager rentManager, List<ValueContainingNode> nodes) {
+        nodes.forEach(v -> {
+            rentManager.trackValueContainingNode(v);
+            verify(valueContainingNodes).add(v);
+        });
     }
 
-    @Test
-    public void trackNodes_alreadyTrackedNodes() {
-        Trie trie = buildTestTrie();
-
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008000")),trie);
-        List<Trie> trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
-
-        assertFalse(trackedNodes.isEmpty());
-        assertEquals(4, trackedNodes.size());
-        assertArrayEquals(new byte[] { 0x04 }, trackedNodes.get(0).getValue()); // key 0a0080
-        assertArrayEquals(new byte[] { 0x03 }, trackedNodes.get(1).getValue()); // key 0a008000
-        assertArrayEquals(new byte[] { 0x06 }, trackedNodes.get(2).getValue()); // key 0a
-        assertArrayEquals(new byte[] { 0x02 }, trackedNodes.get(3).getValue()); // key 0a00
-
-        rentManager.trackNodes(TrieKeySlice.fromKey(decode("0a008000")),trie);
-        trackedNodes = new ArrayList<>(rentManager.getTrackedNodes());
-
-        assertFalse(trackedNodes.isEmpty());
-        assertEquals(4, trackedNodes.size());
-        assertArrayEquals(new byte[] { 0x04 }, trackedNodes.get(0).getValue()); // key 0a0080
-        assertArrayEquals(new byte[] { 0x03 }, trackedNodes.get(1).getValue()); // key 0a008000
-        assertArrayEquals(new byte[] { 0x06 }, trackedNodes.get(2).getValue()); // key 0a
-        assertArrayEquals(new byte[] { 0x02 }, trackedNodes.get(3).getValue()); // key 0a00
-    }
-
-    /**
-     * @return the following tree
-     *
-     *       6
-     *      / \
-     *     /   \
-     *    /     7
-     *   2       \
-     *  / \       \
-     * 1   \       8
-     *      4     /
-     *     / \   9
-     *    3   5
-     */
-    private Trie buildTestTrie() { // todo(fedejinich) duplicated code, extract this to a TrieTestUtil
-        Trie trie = new Trie();
-        trie = trie.put(decode("0a"), new byte[] { 0x06 });
-        trie = trie.put(decode("0a00"), new byte[] { 0x02 });
-        trie = trie.put(decode("0a80"), new byte[] { 0x07 });
-        trie = trie.put(decode("0a0000"), new byte[] { 0x01 });
-        trie = trie.put(decode("0a0080"), new byte[] { 0x04 });
-        trie = trie.put(decode("0a8080"), new byte[] { 0x08 });
-        trie = trie.put(decode("0a008000"), new byte[] { 0x03 });
-        trie = trie.put(decode("0a008080"), new byte[] { 0x05 });
-        trie = trie.put(decode("0a808000"), new byte[] { 0x09 });
-
-        return trie;
+    private List<ValueContainingNode> testNodes() {
+        return Arrays.asList(
+                new ValueContainingNode(
+                        TrieKeySlice.fromKey("key1".getBytes(StandardCharsets.UTF_8)),
+                        READ_OPERATION,
+                        LOADS_CONTRACT),
+                new ValueContainingNode(
+                        TrieKeySlice.fromKey("key2".getBytes(StandardCharsets.UTF_8)),
+                        READ_OPERATION,
+                        LOADS_CONTRACT),
+                new ValueContainingNode(
+                        TrieKeySlice.fromKey("key3".getBytes(StandardCharsets.UTF_8)),
+                        READ_OPERATION,
+                        LOADS_CONTRACT),
+                new ValueContainingNode(
+                        TrieKeySlice.fromKey("key4".getBytes(StandardCharsets.UTF_8)),
+                        WRITE_OPERATION,
+                        LOADS_CONTRACT),
+                new ValueContainingNode(
+                        TrieKeySlice.fromKey("key5".getBytes(StandardCharsets.UTF_8)),
+                        READ_OPERATION,
+                        LOADS_CONTRACT),
+                new ValueContainingNode(
+                        TrieKeySlice.fromKey("key6".getBytes(StandardCharsets.UTF_8)),
+                        WRITE_OPERATION,
+                        LOADS_CONTRACT)
+        );
     }
 }

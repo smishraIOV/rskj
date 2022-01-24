@@ -1,18 +1,27 @@
 package co.rsk.storagerent;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.core.Repository;
 import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class RentManager {
-    private final List<RentTrackingElement> trackedNodes = new ArrayList<>();
+    private final List<ValueContainingNode> valueContainingNodes;
 
-    public void trackNode(RentTrackingElement rentTrackingElement) {
-        this.trackedNodes.add(rentTrackingElement);
+    public RentManager(List<ValueContainingNode> valueContainingNodes) {
+        this.valueContainingNodes = valueContainingNodes;
+    }
+
+    public void trackValueContainingNode(ValueContainingNode valueContainingNode) {
+        this.valueContainingNodes.add(valueContainingNode);
+    }
+
+    @VisibleForTesting
+    protected List<ValueContainingNode> getValueContainingNode() {
+        return this.valueContainingNodes;
     }
 
     /**
@@ -33,35 +42,35 @@ public class RentManager {
     public long payStorageRent(long gas, long currentBlockTimestamp, Repository repository) {
         fetchStorageRentData(repository); // fetch relevant data to pay storage rent
 
-        long cumulativeRent = cumulativeRent();
+        long cumulativeRent = cumulativeRent(currentBlockTimestamp);
 
         if(gas < cumulativeRent) { // todo(fedejinich) is this the right way to throw an OOG?
             throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
         }
 
-        trackedNodes.forEach(e -> {
+        valueContainingNodes.forEach(node -> {
             repository.updateLastRentPaidTimestamp(
-                    e.getKey().encode(),
-                    e.updatedRentTimestamp(currentBlockTimestamp)); // todo(fedejinich) maybe we can rename this
+                    node.getKey().encode(),
+                    node.updatedRentTimestamp(currentBlockTimestamp)); // todo(fedejinich) maybe we can rename this
         });
 
         return GasCost.subtract(gas, cumulativeRent);
     }
 
-    private long cumulativeRent() {
-        return trackedNodes
+    private long cumulativeRent(long currentBlockTimestamp) {
+        return valueContainingNodes
                 .stream()
-                .map(RentTrackingElement::payableRent)
+                .map(v -> v.payableRent(currentBlockTimestamp))
                 .reduce(GasCost::add)
                 .get(); // todo(fedejinich) this should always be present, should I throw an exception?
     }
 
     private void fetchStorageRentData(Repository repository) {
-        this.trackedNodes.forEach(rentTrackingElement -> {
-            Map<String, Long> storageRentData = repository.fetchStorageRentData(rentTrackingElement.getKey().encode());
+        this.valueContainingNodes.forEach(valueContainingNode -> {
+            Map<String, Long> storageRentData = repository.fetchStorageRentData(valueContainingNode.getKey().encode());
 
-            rentTrackingElement.setNodeSize(storageRentData.get("nodeSize"));
-            rentTrackingElement.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
+            valueContainingNode.setNodeSize(storageRentData.get("nodeSize"));
+            valueContainingNode.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
         });
     }
 }

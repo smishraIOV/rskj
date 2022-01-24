@@ -1065,7 +1065,8 @@ public class Trie {
     private Trie split(TrieKeySlice commonPath) {
         int commonPathLength = commonPath.length();
         TrieKeySlice newChildSharedPath = sharedPath.slice(commonPathLength + 1, sharedPath.length());
-        Trie newChildTrie = new Trie(this.store, newChildSharedPath, this.value, this.left, this.right, this.valueLength, this.valueHash, this.childrenSize, this.lastRentPaidTimestamp); // todo(fedejinich) is this ok?
+        Trie newChildTrie = new Trie(this.store, newChildSharedPath, this.value, this.left, this.right, this.valueLength
+                , this.valueHash, this.childrenSize, this.lastRentPaidTimestamp);
         NodeReference newChildReference = new NodeReference(this.store, newChildTrie, null);
 
         // this bit will be implicit and not present in a shared path
@@ -1082,7 +1083,8 @@ public class Trie {
             newRight = newChildReference;
         }
 
-        return new Trie(this.store, commonPath, null, newLeft, newRight, Uint24.ZERO, null, childrenSize, this.lastRentPaidTimestamp); // todo(fedejinich) is this ok?
+        return new Trie(this.store, commonPath, null, newLeft, newRight, Uint24.ZERO,
+                null, childrenSize, this.lastRentPaidTimestamp);
     }
 
     public boolean isTerminal() {

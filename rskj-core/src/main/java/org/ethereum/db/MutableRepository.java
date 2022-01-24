@@ -25,8 +25,8 @@ import co.rsk.crypto.Keccak256;
 import co.rsk.db.MutableTrieCache;
 import co.rsk.db.MutableTrieImpl;
 import co.rsk.storagerent.RentManager;
-import co.rsk.storagerent.RentTrackingElement;
-import co.rsk.storagerent.RentTrackingElement.OperationType;
+import co.rsk.storagerent.ValueContainingNode;
+import co.rsk.storagerent.ValueContainingNode.OperationType;
 import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
@@ -35,8 +35,6 @@ import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.crypto.Keccak256Helper;
 import org.ethereum.vm.DataWord;
-import org.ethereum.vm.GasCost;
-import org.ethereum.vm.program.Program;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +42,7 @@ import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
 
-import static co.rsk.storagerent.RentTrackingElement.OperationType.*;
+import static co.rsk.storagerent.ValueContainingNode.OperationType.*;
 
 public class MutableRepository implements Repository {
     private static final Logger logger = LoggerFactory.getLogger("repository");
@@ -445,7 +443,9 @@ public class MutableRepository implements Repository {
      * */
     private void trackNode(byte[] key, OperationType operationType) {
         if(rentManager != null) {
-            this.rentManager.trackNode(new RentTrackingElement(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+            // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
+            //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
+            this.rentManager.trackValueContainingNode(new ValueContainingNode(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
         }
     }
 }

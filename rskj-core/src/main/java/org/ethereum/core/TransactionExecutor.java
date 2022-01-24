@@ -104,7 +104,7 @@ public class TransactionExecutor {
 
     private boolean localCall = false;
 
-    private RentManager rentManager;
+    private final RentManager rentManager;
 
     public TransactionExecutor(
             Constants constants, ActivationConfig activationConfig, Transaction tx, int txindex, RskAddress coinbase,
@@ -130,7 +130,7 @@ public class TransactionExecutor {
         this.precompiledContracts = precompiledContracts;
         this.enableRemasc = remascEnabled;
         this.deletedAccounts = new HashSet<>(deletedAccounts);
-        this.rentManager = new RentManager();
+        this.rentManager = new RentManager(new ArrayList<>());
     }
 
     /**
@@ -696,14 +696,4 @@ public class TransactionExecutor {
     }
 
     public Coin getPaidFees() { return paidFees; }
-
-    @VisibleForTesting
-    public RentManager getRentManager() {
-        return this.rentManager;
-    }
-
-    @VisibleForTesting
-    public void setRentManager(RentManager spy) {
-        this.rentManager = spy;
-    }
 }
