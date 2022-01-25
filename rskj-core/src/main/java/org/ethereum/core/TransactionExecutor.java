@@ -516,7 +516,7 @@ public class TransactionExecutor {
 
         if(isStorageRentEnabled()) {
             // pay storage rent
-            gasLeftover = rentManager.payStorageRent(gasLeftover, executionBlock.getTimestamp(), track);
+//            gasLeftover = rentManager.payStorageRent(gasLeftover, executionBlock.getTimestamp(), track);
             // todo(fedejinich) SHOULD I REMOVE THE RENT MANAGER FROM THE TRIE?
         }
 
