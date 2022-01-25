@@ -390,7 +390,9 @@ public class MutableRepository implements Repository {
 
     private void internalPut(byte[] key, byte[] value) {
         mutableTrie.put(key, value);
-        trackNode(key, WRITE_OPERATION);
+        if(value != null) { // there's no need to track if it's a delete operation
+            trackNode(key, WRITE_OPERATION);
+        }
     }
 
     private byte[] internalGet(byte[] key) {
@@ -424,6 +426,8 @@ public class MutableRepository implements Repository {
     }
 
     private Iterator<DataWord> internalGetStorageKeys(RskAddress addr) {
+        // this method has been created to encapsulate mutableTrie.getStorageKeys(),
+        // and adds tracking logic for storage rent
         Iterator<DataWord> storageKeys = mutableTrie.getStorageKeys(addr);
 
         if(!storageKeys.equals(Collections.emptyIterator())) { // todo(fedejinich) is this ok?
