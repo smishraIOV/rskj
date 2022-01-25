@@ -21,9 +21,12 @@ package co.rsk.db;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
+import co.rsk.storagerent.RentManager;
+import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieHashTest;
 import org.ethereum.TestUtils;
+import org.ethereum.core.Account;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.db.MutableRepository;
@@ -32,11 +35,15 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 
 /**
  * Created by ajlopez on 29/03/2017.
@@ -178,7 +185,7 @@ public class RepositoryImplTest {
 
         repository.createAccount(accAddress);
 
-        Assert.assertTrue(repository.isExist(accAddress));
+        assertTrue(repository.isExist(accAddress));
     }
 
     @Test
@@ -236,7 +243,7 @@ public class RepositoryImplTest {
         AccountState accState = repository.getAccountState(accAddress);
 
         Assert.assertNotNull(accState);
-        Assert.assertTrue(accState.isHibernated());
+        assertTrue(accState.isHibernated());
     }
 
     @Test
@@ -277,7 +284,7 @@ public class RepositoryImplTest {
         track.createAccount(accAddress);
         track.commit();
 
-        Assert.assertTrue(repository.isExist(accAddress));
+        assertTrue(repository.isExist(accAddress));
     }
 
     @Test
@@ -390,7 +397,7 @@ public class RepositoryImplTest {
         Set<RskAddress> keys = repository.getAccountsKeys();
 
         Assert.assertNotNull(keys);
-        Assert.assertTrue(keys.isEmpty());
+        assertTrue(keys.isEmpty());
     }
 
     @Test
@@ -407,8 +414,8 @@ public class RepositoryImplTest {
         Assert.assertNotNull(keys);
         Assert.assertFalse(keys.isEmpty());
         Assert.assertEquals(2, keys.size());
-        Assert.assertTrue(keys.contains(accAddress1));
-        Assert.assertTrue(keys.contains(accAddress2));
+        assertTrue(keys.contains(accAddress1));
+        assertTrue(keys.contains(accAddress2));
     }
 
     @Test
@@ -422,6 +429,310 @@ public class RepositoryImplTest {
 
         Assert.assertThat(repository.isContract(rskAddress), is(true));
         Assert.assertThat(repository.isContract(TestUtils.randomAddress()), is(false));
+    }
+
+    @Test
+    public void internalGet_getCode_shouldTriggerNodeTrackingIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
+
+        repository.initRentManager(rentManager);
+
+        repository.getCode(accAddress1);
+        verify(rentManager, times(3)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shouldn't track on nonexistent account
+        repository.getCode(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGet_isContract_shouldTriggerNodeTrackingIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
+
+        repository.initRentManager(rentManager);
+
+        repository.isContract(accAddress1);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shoudln't track on nonexistent account
+        repository.isContract(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGet_getStorageBytes_shouldTriggerNodeTrackingIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
+        repository.addStorageBytes(accAddress1, DataWord.ONE,
+                "something".getBytes(StandardCharsets.UTF_8));
+
+        repository.initRentManager(rentManager);
+
+        repository.getStorageBytes(accAddress1, DataWord.ONE);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shouldn't track on nonexistent storage key
+        repository.getStorageBytes(accAddress1, DataWord.ZERO);
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shouldn't track on nonexistent account
+        repository.getStorageBytes(randomAccountAddress(), DataWord.ONE);
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+
+    }
+
+    @Test
+    public void internalGet_getStorageValue_shouldTriggerNodeTrackingIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
+        repository.addStorageBytes(accAddress1, DataWord.ONE,
+                "something".getBytes(StandardCharsets.UTF_8));
+
+        repository.initRentManager(rentManager);
+
+        repository.getStorageValue(accAddress1, DataWord.ONE);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shouldn't track on nonexistent storage key
+        repository.getStorageValue(accAddress1, DataWord.valueOf(2));
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shouldn't track on nonexistent account
+        repository.getStorageValue(randomAccountAddress(), DataWord.ONE);
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGet_getAccountState_shouldTriggerNodeTrackingIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
+        repository.addStorageBytes(accAddress1, DataWord.ONE,
+                "something".getBytes(StandardCharsets.UTF_8));
+
+        repository.initRentManager(rentManager);
+
+        repository.getAccountState(accAddress1);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // shouldn't track on nonexistent account state
+        repository.getAccountState(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalPut_setupContract_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+
+        repository.initRentManager(rentManager);
+
+        repository.setupContract(randomAccountAddress());
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalPut_saveCode_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+
+        repository.initRentManager(rentManager);
+
+        repository.saveCode(accAddress1, "something".getBytes(StandardCharsets.UTF_8));
+        verify(rentManager, times(2)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        // it tracks three times if it's ....
+        repository.saveCode(randomAccountAddress(), "something".getBytes(StandardCharsets.UTF_8));
+        verify(rentManager, times(3)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalPut_addStorageBytes_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+
+        repository.initRentManager(rentManager);
+
+        repository.addStorageBytes(accAddress1, DataWord.ONE, "something".getBytes(StandardCharsets.UTF_8));
+        // there's one unnecessary track because there is test code in production
+        verify(rentManager, times(2)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalPut_updateAccountState_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+
+        repository.initRentManager(rentManager);
+
+        repository.updateAccountState(accAddress1, new AccountState());
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGetValueHash_getCodeHashStandard_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+
+        repository.initRentManager(rentManager);
+
+        repository.getCodeHashStandard(accAddress1);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        repository.getCodeHashStandard(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGetValueHash_getCodeHashNonStandard_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+
+        repository.initRentManager(rentManager);
+
+        repository.getCodeHashNonStandard(accAddress1);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        repository.getCodeHashNonStandard(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGetValueLength_isExist_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+
+        repository.initRentManager(rentManager);
+
+        repository.isExist(accAddress1);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        repository.isExist(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGetValueLength_getCodeLength_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+        RskAddress accAddress2 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "something".getBytes(StandardCharsets.UTF_8));
+
+        repository.createAccount(accAddress2);
+
+        repository.initRentManager(rentManager);
+
+        repository.getCodeLength(accAddress1);
+        verify(rentManager, times(2)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        repository.getCodeLength(accAddress2);
+        // because it's an address that doesn't have any code
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        repository.getCodeLength(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void internalGetStorageKeys_getStorageKeys_shouldTrackNodesIfValueItsPresent() {
+        Repository repository = createRepository();
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        RskAddress accAddress1 = randomAccountAddress();
+
+        repository.createAccount(accAddress1);
+        repository.setupContract(accAddress1);
+        repository.saveCode(accAddress1, "something".getBytes(StandardCharsets.UTF_8));
+
+        repository.initRentManager(rentManager);
+
+        repository.getStorageKeys(accAddress1);
+        verify(rentManager, times(1)).trackValueContainingNode(any());
+
+        rentManager = newRentManager(repository);
+
+        repository.getStorageKeys(randomAccountAddress());
+        verify(rentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    private RentManager newRentManager(Repository repository) {
+        RentManager rentManager = spy(new RentManager(new ArrayList<>()));
+        repository.initRentManager(rentManager);
+
+        return rentManager;
     }
 
     private static RskAddress randomAccountAddress() {
