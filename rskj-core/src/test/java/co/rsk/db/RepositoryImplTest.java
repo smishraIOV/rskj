@@ -575,20 +575,11 @@ public class RepositoryImplTest {
     public void internalPut_saveCode_shouldTrackNodesIfValueItsPresent() {
         Repository repository = createRepository();
         RentManager rentManager = spy(new RentManager(new ArrayList<>()));
-        RskAddress accAddress1 = randomAccountAddress();
-
-        repository.createAccount(accAddress1);
-
+        
         repository.initRentManager(rentManager);
 
-        repository.saveCode(accAddress1, "something".getBytes(StandardCharsets.UTF_8));
-        verify(rentManager, times(2)).trackValueContainingNode(any());
-
-        rentManager = newRentManager(repository);
-
-        // it tracks three times if it's ....
         repository.saveCode(randomAccountAddress(), "something".getBytes(StandardCharsets.UTF_8));
-        verify(rentManager, times(3)).trackValueContainingNode(any());
+        verify(rentManager, times(1)).trackValueContainingNode(any());
     }
 
     @Test
