@@ -1369,7 +1369,7 @@ public class Trie {
 
         // going up to the trie root with new updated left/right
         return new Trie(this.store, this.sharedPath, this.value, newLeft, newRight,
-                this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp); // use the already existing timestamp
+                this.valueLength, this.valueHash, childrenSize, this.lastRentPaidTimestamp); // use the already existing timestamp (this can be used to timestamp intermediate nodes also)
     }
 
     public long getLastRentPaidTimestamp() {
