@@ -27,7 +27,7 @@ import co.rsk.metrics.profilers.Profiler;
 import co.rsk.metrics.profilers.ProfilerFactory;
 import co.rsk.panic.PanicProcessor;
 import co.rsk.rpc.modules.trace.ProgramSubtrace;
-import co.rsk.storagerent.RentManager;
+import co.rsk.storagerent.StorageRentManager;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.config.Constants;
 import org.ethereum.config.blockchain.upgrades.ActivationConfig;
@@ -104,7 +104,7 @@ public class TransactionExecutor {
 
     private boolean localCall = false;
 
-    private final RentManager rentManager;
+    private final StorageRentManager storageRentManager;
 
     public TransactionExecutor(
             Constants constants, ActivationConfig activationConfig, Transaction tx, int txindex, RskAddress coinbase,
@@ -130,7 +130,7 @@ public class TransactionExecutor {
         this.precompiledContracts = precompiledContracts;
         this.enableRemasc = remascEnabled;
         this.deletedAccounts = new HashSet<>(deletedAccounts);
-        this.rentManager = new RentManager(new ArrayList<>());
+        this.storageRentManager = new StorageRentManager(new ArrayList<>());
     }
 
     /**
@@ -157,7 +157,7 @@ public class TransactionExecutor {
      */
     private boolean init() {
         if(isStorageRentEnabled()) {
-            track.initRentManager(rentManager);
+            track.initStorageRentManager(storageRentManager);
         }
 
         basicTxCost = tx.transactionCost(constants, activations);

@@ -24,7 +24,7 @@ import co.rsk.core.types.ints.Uint24;
 import co.rsk.crypto.Keccak256;
 import co.rsk.db.MutableTrieCache;
 import co.rsk.db.MutableTrieImpl;
-import co.rsk.storagerent.RentManager;
+import co.rsk.storagerent.StorageRentManager;
 import co.rsk.storagerent.ValueContainingNode;
 import co.rsk.storagerent.ValueContainingNode.OperationType;
 import co.rsk.trie.MutableTrie;
@@ -52,7 +52,7 @@ public class MutableRepository implements Repository {
 
     private final TrieKeyMapper trieKeyMapper;
     private final MutableTrie mutableTrie;
-    private RentManager rentManager;
+    private StorageRentManager storageRentManager;
 
     public MutableRepository(TrieStore trieStore, Trie trie) {
         this(new MutableTrieImpl(trieStore, trie));
@@ -365,8 +365,8 @@ public class MutableRepository implements Repository {
     }
 
     @Override
-    public void initRentManager(RentManager rentManager) {
-        this.rentManager = rentManager;
+    public void initStorageRentManager(StorageRentManager storageRentManager) {
+        this.storageRentManager = storageRentManager;
     }
 
     @Override
@@ -446,10 +446,10 @@ public class MutableRepository implements Repository {
 //     * @param loadsContractCode if the operation loads contract code
      * */
     private void trackNode(byte[] key, OperationType operationType) {
-        if(rentManager != null) {
+        if(storageRentManager != null) {
             // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
             //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
-            this.rentManager.trackValueContainingNode(new ValueContainingNode(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+            this.storageRentManager.trackValueContainingNode(new ValueContainingNode(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
         }
     }
 }

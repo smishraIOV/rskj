@@ -22,9 +22,8 @@ package org.ethereum.core;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.db.RepositorySnapshot;
-import co.rsk.storagerent.RentManager;
+import co.rsk.storagerent.StorageRentManager;
 import co.rsk.trie.Trie;
-import co.rsk.trie.TrieKeySlice;
 import org.ethereum.vm.DataWord;
 
 import java.math.BigInteger;
@@ -147,7 +146,7 @@ public interface Repository extends RepositorySnapshot {
         addBalance(toAddr, value);
     }
 
-    void initRentManager(RentManager rentManager);
+    void initStorageRentManager(StorageRentManager storageRentManager);
 
     void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp);
 

@@ -8,10 +8,10 @@ import org.ethereum.vm.program.Program;
 import java.util.List;
 import java.util.Map;
 
-public class RentManager {
+public class StorageRentManager {
     private final List<ValueContainingNode> valueContainingNodes;
 
-    public RentManager(List<ValueContainingNode> valueContainingNodes) {
+    public StorageRentManager(List<ValueContainingNode> valueContainingNodes) {
         this.valueContainingNodes = valueContainingNodes;
     }
 

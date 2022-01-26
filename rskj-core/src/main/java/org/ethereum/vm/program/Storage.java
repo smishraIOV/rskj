@@ -22,9 +22,8 @@ package org.ethereum.vm.program;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
-import co.rsk.storagerent.RentManager;
+import co.rsk.storagerent.StorageRentManager;
 import co.rsk.trie.Trie;
-import co.rsk.trie.TrieKeySlice;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.vm.DataWord;
@@ -230,8 +229,8 @@ public class Storage implements Repository, ProgramListenerAware {
     // todo(fedejinich) I guess initRentManager & payStorageRent should be unsupported also
 
     @Override
-    public void initRentManager(RentManager rentManager) {
-        repository.initRentManager(rentManager);
+    public void initStorageRentManager(StorageRentManager storageRentManager) {
+        repository.initStorageRentManager(storageRentManager);
     }
 
     @Override

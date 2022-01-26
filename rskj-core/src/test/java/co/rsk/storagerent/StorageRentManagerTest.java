@@ -14,28 +14,28 @@ import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATI
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-public class RentManagerTest {
+public class StorageRentManagerTest {
 
     private static final boolean LOADS_CONTRACT = false;
     public static final long CURRENT_BLOCK_TIMESTAMP = new GregorianCalendar(2022, 1, 30)
             .getTime()
             .getTime();
 
-    private RentManager rentManager;
+    private StorageRentManager storageRentManager;
     private List<ValueContainingNode> testNodes;
     private ArrayList<ValueContainingNode> valueContainingNodes;
 
     @Before
     public void setup() {
         valueContainingNodes = spy(new ArrayList<>());
-        rentManager = new RentManager(valueContainingNodes);
+        storageRentManager = new StorageRentManager(valueContainingNodes);
         testNodes = testNodes();
     }
     
     @Test
     public void trackNode_shouldAddNodesToTheList() {
-        trackValueContainingNodes(rentManager, testNodes());
-        assertEquals(6, rentManager.getValueContainingNode().size());
+        trackValueContainingNodes(storageRentManager, testNodes());
+        assertEquals(6, storageRentManager.getValueContainingNode().size());
     }
 
     @Test
@@ -43,9 +43,9 @@ public class RentManagerTest {
         Repository repository = spy(Repository.class);
         mockStorageRentData(repository, testNodes);
 
-        trackValueContainingNodes(rentManager, testNodes);
+        trackValueContainingNodes(storageRentManager, testNodes);
 
-        long gasLeftover = rentManager.payStorageRent(100000, CURRENT_BLOCK_TIMESTAMP, repository);
+        long gasLeftover = storageRentManager.payStorageRent(100000, CURRENT_BLOCK_TIMESTAMP, repository);
 
         verify(repository, times(testNodes.size())).updateLastRentPaidTimestamp(any(), anyLong());
         assertEquals(70000, gasLeftover);
@@ -56,12 +56,12 @@ public class RentManagerTest {
         Repository repository = spy(Repository.class);
         mockStorageRentData(repository, testNodes);
 
-        trackValueContainingNodes(rentManager, testNodes);
+        trackValueContainingNodes(storageRentManager, testNodes);
 
         int notEnoughGas = 29999;
 
         try{
-            rentManager.payStorageRent(notEnoughGas, CURRENT_BLOCK_TIMESTAMP, repository);
+            storageRentManager.payStorageRent(notEnoughGas, CURRENT_BLOCK_TIMESTAMP, repository);
         } catch (Program.OutOfGasException e) {
             String expectedMessage = String.format(
                     "not enough gas to pay storage rent. gas: {}, gasNeeded: {}",
@@ -81,9 +81,9 @@ public class RentManagerTest {
         });
     }
 
-    private void trackValueContainingNodes(RentManager rentManager, List<ValueContainingNode> nodes) {
+    private void trackValueContainingNodes(StorageRentManager storageRentManager, List<ValueContainingNode> nodes) {
         nodes.forEach(v -> {
-            rentManager.trackValueContainingNode(v);
+            storageRentManager.trackValueContainingNode(v);
             verify(valueContainingNodes).add(v);
         });
     }
