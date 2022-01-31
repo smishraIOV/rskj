@@ -431,7 +431,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGet_getCode_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -453,7 +453,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGet_isContract_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -475,7 +475,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGet_getStorageBytes_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -506,7 +506,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGet_getStorageValue_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -536,7 +536,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGet_getAccountState_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -560,7 +560,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalPut_setupContract_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
 
         repository.initStorageRentManager(storageRentManager);
@@ -571,7 +571,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalPut_saveCode_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         
         repository.initStorageRentManager(storageRentManager);
@@ -582,7 +582,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalPut_addStorageBytes_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -597,7 +597,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalPut_updateAccountState_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -611,7 +611,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGetValueHash_getCodeHashStandard_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -631,7 +631,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGetValueHash_getCodeHashNonStandard_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -651,7 +651,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGetValueLength_isExist_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 
@@ -671,7 +671,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGetValueLength_getCodeLength_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
         RskAddress accAddress2 = randomAccountAddress();
@@ -702,7 +702,7 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGetStorageKeys_getStorageKeys_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepository();
+        Repository repository = createRepositoryWithCache();
         StorageRentManager storageRentManager = spy(new StorageRentManager(new ArrayList<>()));
         RskAddress accAddress1 = randomAccountAddress();
 

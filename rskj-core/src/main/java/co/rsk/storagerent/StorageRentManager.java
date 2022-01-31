@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public class StorageRentManager {
+    // TODO(fedejinich) use a set and reimplement ValueContainingNode.equals to avoid duplicates
     private final List<ValueContainingNode> valueContainingNodes;
 
     public StorageRentManager(List<ValueContainingNode> valueContainingNodes) {
