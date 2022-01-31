@@ -5,12 +5,14 @@ import org.ethereum.core.Repository;
 import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class StorageRentManager {
     // TODO(fedejinich) use a set and reimplement ValueContainingNode.equals to avoid duplicates
+    //   I'll use a Map
     private final List<ValueContainingNode> valueContainingNodes;
+    // avoid duplicates by using a Set
+    private final Set<byte[]> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
 
     public StorageRentManager(List<ValueContainingNode> valueContainingNodes) {
         this.valueContainingNodes = valueContainingNodes;
@@ -66,5 +68,9 @@ public class StorageRentManager {
             valueContainingNode.setNodeSize(storageRentData.get("nodeSize"));
             valueContainingNode.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
         });
+    }
+
+    public void trackMismatch(byte[] key) {
+        this.mismatches.add(key);
     }
 }

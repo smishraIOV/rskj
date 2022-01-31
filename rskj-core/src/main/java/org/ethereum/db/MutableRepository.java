@@ -393,6 +393,7 @@ public class MutableRepository implements Repository {
         if(value != null) { // there's no need to track if it's a delete operation
             trackNode(key, WRITE_OPERATION);
         }
+        // todo(fedejinich) there are no mismatches for put operations, right?
     }
 
     private byte[] internalGet(byte[] key) {
@@ -400,6 +401,8 @@ public class MutableRepository implements Repository {
 
         if(value != null) {
             trackNode(key, READ_OPERATION);
+        } else {
+            trackMismatch(key);
         }
 
         return value;
@@ -410,6 +413,8 @@ public class MutableRepository implements Repository {
 
         if(valueHash.isPresent()) {
             trackNode(key, READ_OPERATION);
+        } else {
+            trackMismatch(key);
         }
 
         return valueHash;
@@ -420,6 +425,8 @@ public class MutableRepository implements Repository {
 
         if(valueLength != Uint24.ZERO) {
             trackNode(key, READ_OPERATION);
+        } else {
+            trackMismatch(key);
         }
 
         return valueLength;
@@ -429,9 +436,12 @@ public class MutableRepository implements Repository {
         // this method has been created to encapsulate mutableTrie.getStorageKeys(),
         // and adds tracking logic for storage rent
         Iterator<DataWord> storageKeys = mutableTrie.getStorageKeys(addr);
+        byte[] accountStoragePrefixKey = trieKeyMapper.getAccountStoragePrefixKey(addr); // todo(fedejinich) is this ok ?
 
         if(!storageKeys.equals(Collections.emptyIterator())) { // todo(fedejinich) is this ok?
-            trackNode(trieKeyMapper.getAccountStoragePrefixKey(addr), READ_OPERATION);
+            trackNode(accountStoragePrefixKey, READ_OPERATION);
+        } else {
+            trackMismatch(accountStoragePrefixKey);
         }
 
         return storageKeys;
@@ -450,6 +460,13 @@ public class MutableRepository implements Repository {
             // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
             //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
             this.storageRentManager.trackValueContainingNode(new ValueContainingNode(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+        }
+    }
+
+    private void trackMismatch(byte[] key) {
+        // TODO(fedejinich) wrap the null check with a new method (aka useRentManager)
+        if(storageRentManager != null) {
+            this.storageRentManager.trackMismatch(key);
         }
     }
 }
