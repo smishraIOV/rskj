@@ -130,7 +130,7 @@ public class TransactionExecutor {
         this.precompiledContracts = precompiledContracts;
         this.enableRemasc = remascEnabled;
         this.deletedAccounts = new HashSet<>(deletedAccounts);
-        this.storageRentManager = new StorageRentManager(new ArrayList<>());
+        this.storageRentManager = new StorageRentManager(new HashMap<>());
     }
 
     /**

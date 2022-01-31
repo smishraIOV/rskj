@@ -8,22 +8,21 @@ import org.ethereum.vm.program.Program;
 import java.util.*;
 
 public class StorageRentManager {
-    // TODO(fedejinich) use a set and reimplement ValueContainingNode.equals to avoid duplicates
-    //   I'll use a Map
-    private final List<ValueContainingNode> valueContainingNodes;
+    private final Map<byte[], ValueContainingNode> valueContainingNodes;
     // avoid duplicates by using a Set
     private final Set<byte[]> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
 
-    public StorageRentManager(List<ValueContainingNode> valueContainingNodes) {
+    public StorageRentManager(Map<byte[], ValueContainingNode> valueContainingNodes) {
         this.valueContainingNodes = valueContainingNodes;
     }
 
     public void trackValueContainingNode(ValueContainingNode valueContainingNode) {
-        this.valueContainingNodes.add(valueContainingNode);
+        byte[] key = valueContainingNode.getKey().encode();
+        this.valueContainingNodes.put(key, valueContainingNode); // todo(fedejinich) any priority between READ/WRITE operations
     }
 
     @VisibleForTesting
-    protected List<ValueContainingNode> getValueContainingNode() {
+    protected Map<byte[], ValueContainingNode> getValueContainingNode() {
         return this.valueContainingNodes;
     }
 
@@ -44,17 +43,16 @@ public class StorageRentManager {
             throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
         }
 
-        valueContainingNodes.forEach(node -> {
-            repository.updateLastRentPaidTimestamp(
-                    node.getKey().encode(),
-                    node.updatedRentTimestamp(currentBlockTimestamp));
-        });
+        valueContainingNodes.values().forEach(node -> repository.updateLastRentPaidTimestamp(
+                node.getKey().encode(),
+                node.updatedRentTimestamp(currentBlockTimestamp)));
 
         return GasCost.subtract(gas, cumulativeRent);
     }
 
     private long cumulativeRent(long currentBlockTimestamp) {
         return valueContainingNodes
+                .values()
                 .stream()
                 .map(v -> v.payableRent(currentBlockTimestamp))
                 .reduce(GasCost::add)
@@ -62,7 +60,7 @@ public class StorageRentManager {
     }
 
     private void fetchStorageRentData(Repository repository) {
-        this.valueContainingNodes.forEach(valueContainingNode -> {
+        this.valueContainingNodes.values().forEach(valueContainingNode -> {
             Map<String, Long> storageRentData = repository.fetchStorageRentData(valueContainingNode.getKey().encode());
 
             valueContainingNode.setNodeSize(storageRentData.get("nodeSize"));

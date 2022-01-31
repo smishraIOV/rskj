@@ -23,11 +23,11 @@ public class StorageRentManagerTest {
 
     private StorageRentManager storageRentManager;
     private List<ValueContainingNode> testNodes;
-    private ArrayList<ValueContainingNode> valueContainingNodes;
+    private Map<byte[], ValueContainingNode> valueContainingNodes;
 
     @Before
     public void setup() {
-        valueContainingNodes = spy(new ArrayList<>());
+        valueContainingNodes = spy(new HashMap<>());
         storageRentManager = new StorageRentManager(valueContainingNodes);
         testNodes = testNodes();
     }
@@ -84,7 +84,7 @@ public class StorageRentManagerTest {
     private void trackValueContainingNodes(StorageRentManager storageRentManager, List<ValueContainingNode> nodes) {
         nodes.forEach(v -> {
             storageRentManager.trackValueContainingNode(v);
-            verify(valueContainingNodes).add(v);
+            verify(valueContainingNodes).put(v.getKey().encode(), v);
         });
     }
 
