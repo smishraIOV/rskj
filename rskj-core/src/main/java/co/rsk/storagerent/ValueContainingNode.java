@@ -2,6 +2,10 @@ package co.rsk.storagerent;
 
 import co.rsk.trie.TrieKeySlice;
 
+import java.util.Arrays;
+import java.util.Objects;
+
+import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
 import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
 import static co.rsk.storagerent.StorageRentComputation.*;
 
@@ -11,12 +15,13 @@ import static co.rsk.storagerent.StorageRentComputation.*;
  * */
 public class ValueContainingNode {
 
-    public enum OperationType { WRITE_OPERATION, READ_OPERATION }
+
+    public enum OperationType { WRITE_OPERATION, READ_OPERATION;}
 
     private final TrieKeySlice key;
     private final OperationType operationType;
-    private final boolean loadsContractCode;
 
+    private final boolean loadsContractCode;
     private Long nodeSize;
     private Long lastRentPaidTimestamp;
 
@@ -37,7 +42,6 @@ public class ValueContainingNode {
                 rentCap(loadsContractCode),
                 rentThreshold(loadsContractCode));
     }
-
     /**
      * Calculates the new timestamp after paying the rent
      * @return a new updated timestamp
@@ -79,6 +83,19 @@ public class ValueContainingNode {
         this.lastRentPaidTimestamp = lastRentPaidTimestamp;
     }
 
+    /**
+     * Determines if a node should be replaced by another one due to different operation types,
+     * the operation with the lowest threshold it's the one that leads the storage rent payment
+     * */
+    public boolean shouldBeReplaced(ValueContainingNode anotherNode) {
+        return operationType.equals(READ_OPERATION) &&
+                anotherNode.operationType.equals(WRITE_OPERATION);
+    }
+
+    public OperationType getOperationType() {
+        return this.operationType;
+    }
+
     private long duration(long currentBlockTimsetamp) {
         // todo(fedejinich) is this the right way to calculate the duration?
         return currentBlockTimsetamp - this.getLastRentPaidTimestamp();
@@ -91,5 +108,22 @@ public class ValueContainingNode {
 
     private long rentCap(boolean loadsContract) {
         return loadsContract ? RENT_CAP_CONTRACT_CODE : RENT_CAP;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ValueContainingNode)) return false;
+        ValueContainingNode that = (ValueContainingNode) o;
+        return loadsContractCode == that.loadsContractCode &&
+                Arrays.equals(getKey().encode(), that.getKey().encode()) &&
+                getOperationType() == that.getOperationType() &&
+                Objects.equals(nodeSize, that.nodeSize) &&
+                Objects.equals(lastRentPaidTimestamp, that.lastRentPaidTimestamp);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getKey(), getOperationType(), loadsContractCode, nodeSize, lastRentPaidTimestamp);
     }
 }

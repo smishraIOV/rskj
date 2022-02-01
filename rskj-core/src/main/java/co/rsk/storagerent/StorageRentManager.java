@@ -2,27 +2,40 @@ package co.rsk.storagerent;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.core.Repository;
+import org.ethereum.db.ByteArrayWrapper;
 import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class StorageRentManager {
-    private final Map<byte[], ValueContainingNode> valueContainingNodes;
+    // TODO(fedejinich) analyse collection overflows
+    private final Map<ByteArrayWrapper, ValueContainingNode> valueContainingNodes;
     // avoid duplicates by using a Set
-    private final Set<byte[]> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
+    private final Set<ByteArrayWrapper> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
 
-    public StorageRentManager(Map<byte[], ValueContainingNode> valueContainingNodes) {
+    public StorageRentManager(Map<ByteArrayWrapper, ValueContainingNode> valueContainingNodes) {
         this.valueContainingNodes = valueContainingNodes;
     }
 
-    public void trackValueContainingNode(ValueContainingNode valueContainingNode) {
-        byte[] key = valueContainingNode.getKey().encode();
-        this.valueContainingNodes.put(key, valueContainingNode); // todo(fedejinich) any priority between READ/WRITE operations
+    public void trackValueContainingNode(ValueContainingNode nodeToTrack) {
+        byte[] key = nodeToTrack.getKey().encode();
+
+        if(this.valueContainingNodes.containsKey(key)) {
+            ValueContainingNode containedNode = this.valueContainingNodes.get(key);
+            if(containedNode.shouldBeReplaced(nodeToTrack)) {
+                // it needs to be replaced because it has the lowest threshold
+                this.valueContainingNodes.put(new ByteArrayWrapper(key), nodeToTrack);
+            }
+        } else {
+            this.valueContainingNodes.put(new ByteArrayWrapper(key), nodeToTrack);
+        }
     }
 
     @VisibleForTesting
-    protected Map<byte[], ValueContainingNode> getValueContainingNode() {
+    protected Map<ByteArrayWrapper, ValueContainingNode> getValueContainingNode() {
         return this.valueContainingNodes;
     }
 
@@ -69,6 +82,10 @@ public class StorageRentManager {
     }
 
     public void trackMismatch(byte[] key) {
-        this.mismatches.add(key);
+        this.mismatches.add(new ByteArrayWrapper(key));
+    }
+
+    public Set<ByteArrayWrapper> getMismatches() {
+        return mismatches;
     }
 }
