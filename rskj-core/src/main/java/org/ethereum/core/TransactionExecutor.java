@@ -157,7 +157,10 @@ public class TransactionExecutor {
      */
     private boolean init() {
         if(isStorageRentEnabled()) {
+            // they both share the same StorageRentManager instance to track ALL the involved
+            // value-containing nodes during the tx execution
             track.initStorageRentManager(storageRentManager);
+            cacheTrack.initStorageRentManager(storageRentManager);
         }
 
         basicTxCost = tx.transactionCost(constants, activations);
