@@ -1,6 +1,7 @@
 package co.rsk.storagerent;
 
 import co.rsk.trie.TrieKeySlice;
+import org.ethereum.db.ByteArrayWrapper;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -20,7 +21,7 @@ import static org.junit.Assert.assertEquals;
  * */
 public class ValueContainingNodeTest {
 
-    private static final TrieKeySlice SOME_KEY = TrieKeySlice.fromKey("key".getBytes(StandardCharsets.UTF_8));
+    private static final ByteArrayWrapper SOME_KEY = new ByteArrayWrapper("key".getBytes(StandardCharsets.UTF_8));
     public static final long CURRENT_BLOCK_TIMESTAMP = new GregorianCalendar(
             2022, 1, 30).getTime().getTime();
     private static final long LAST_RENT_PAID_TIMESTAMP = new GregorianCalendar(

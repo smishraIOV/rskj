@@ -1,24 +1,21 @@
 package co.rsk.storagerent;
 
-import co.rsk.trie.TrieKeySlice;
+import org.ethereum.db.ByteArrayWrapper;
 
-import java.util.Arrays;
 import java.util.Objects;
 
+import static co.rsk.storagerent.StorageRentComputation.*;
 import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
 import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
-import static co.rsk.storagerent.StorageRentComputation.*;
 
 /**
  * Represents an existing value-containing trie node.
  * Given an existing trie key, returns the relevant data for paying the storage rent.
  * */
 public class ValueContainingNode {
+    public enum OperationType { WRITE_OPERATION, READ_OPERATION }
 
-
-    public enum OperationType { WRITE_OPERATION, READ_OPERATION;}
-
-    private final TrieKeySlice key;
+    private final ByteArrayWrapper key; // using this type because it's harder to compare raw byte arrays (byte[])
     private final OperationType operationType;
 
     private final boolean loadsContractCode;
@@ -26,7 +23,7 @@ public class ValueContainingNode {
     private Long lastRentPaidTimestamp;
 
     // todo(fedejinich) WRITE OPERATION & LOADS CONTRACT CODE, IS THAT AN ILLEGAL STATE?
-    public ValueContainingNode(TrieKeySlice key, OperationType operationType, boolean loadsContractCode) {
+    public ValueContainingNode(ByteArrayWrapper key, OperationType operationType, boolean loadsContractCode) {
         this.key = key;
         this.operationType = operationType;
         this.loadsContractCode = loadsContractCode;
@@ -57,7 +54,7 @@ public class ValueContainingNode {
         );
     }
 
-    public TrieKeySlice getKey() {
+    public ByteArrayWrapper getKey() {
         return this.key;
     }
 
@@ -116,7 +113,7 @@ public class ValueContainingNode {
         if (!(o instanceof ValueContainingNode)) return false;
         ValueContainingNode that = (ValueContainingNode) o;
         return loadsContractCode == that.loadsContractCode &&
-                Arrays.equals(getKey().encode(), that.getKey().encode()) &&
+                getKey().equals(that.getKey()) &&
                 getOperationType() == that.getOperationType() &&
                 Objects.equals(nodeSize, that.nodeSize) &&
                 Objects.equals(lastRentPaidTimestamp, that.lastRentPaidTimestamp);

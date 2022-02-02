@@ -21,16 +21,16 @@ public class StorageRentManager {
     }
 
     public void trackValueContainingNode(ValueContainingNode nodeToTrack) {
-        byte[] key = nodeToTrack.getKey().encode();
+        ByteArrayWrapper key = nodeToTrack.getKey();
 
         if(this.valueContainingNodes.containsKey(key)) {
             ValueContainingNode containedNode = this.valueContainingNodes.get(key);
             if(containedNode.shouldBeReplaced(nodeToTrack)) {
                 // it needs to be replaced because it has the lowest threshold
-                this.valueContainingNodes.put(new ByteArrayWrapper(key), nodeToTrack);
+                this.valueContainingNodes.put(key, nodeToTrack);
             }
         } else {
-            this.valueContainingNodes.put(new ByteArrayWrapper(key), nodeToTrack);
+            this.valueContainingNodes.put(key, nodeToTrack);
         }
     }
 
@@ -57,7 +57,7 @@ public class StorageRentManager {
         }
 
         valueContainingNodes.values().forEach(node -> repository.updateLastRentPaidTimestamp(
-                node.getKey().encode(),
+                node.getKey().getData(),
                 node.updatedRentTimestamp(currentBlockTimestamp)));
 
         return GasCost.subtract(gas, cumulativeRent);
@@ -74,7 +74,7 @@ public class StorageRentManager {
 
     private void fetchStorageRentData(Repository repository) {
         this.valueContainingNodes.values().forEach(valueContainingNode -> {
-            Map<String, Long> storageRentData = repository.fetchStorageRentData(valueContainingNode.getKey().encode());
+            Map<String, Long> storageRentData = repository.fetchStorageRentData(valueContainingNode.getKey().getData());
 
             valueContainingNode.setNodeSize(storageRentData.get("nodeSize"));
             valueContainingNode.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));

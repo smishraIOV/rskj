@@ -459,7 +459,7 @@ public class MutableRepository implements Repository {
         if(storageRentManager != null) {
             // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
             //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
-            this.storageRentManager.trackValueContainingNode(new ValueContainingNode(TrieKeySlice.fromKey(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+            this.storageRentManager.trackValueContainingNode(new ValueContainingNode(new ByteArrayWrapper(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
         }
     }
 
