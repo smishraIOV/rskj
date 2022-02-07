@@ -22,12 +22,15 @@ import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
 import co.rsk.storagerent.StorageRentManager;
+import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieHashTest;
+import co.rsk.trie.TrieKeySlice;
 import org.ethereum.TestUtils;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.db.MutableRepository;
+import org.ethereum.db.TrieKeyMapper;
 import org.ethereum.vm.DataWord;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,7 +39,9 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static org.bouncycastle.util.encoders.Hex.decode;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -717,6 +722,22 @@ public class RepositoryImplTest {
         // shouldn't track on nonexistent account state
         repository.getStorageKeys(randomAccountAddress());
         verify(storageRentManager, times(0)).trackValueContainingNode(any());
+    }
+
+    @Test
+    public void updateLastRentPaidTimestamp_shouldCallTrieUpdateTimestamp() {
+        MutableTrieCache mutableTrie = spy(new MutableTrieCache(new MutableTrieImpl(null, new Trie())));
+        Repository repository = new MutableRepository(mutableTrie);
+        RskAddress accAddress1 = randomAccountAddress();
+        byte[] key = new TrieKeyMapper().getAccountKey(accAddress1);
+
+        repository.createAccount(accAddress1);
+
+        repository.commit(); // it needs to do the real mutableTrie.put()
+
+        repository.updateLastRentPaidTimestamp(key, 12);
+        verify(mutableTrie, times(1))
+                .updateLastRentPaidTimestamp(TrieKeySlice.fromKey(key), 12);
     }
 
     private StorageRentManager newRentManager(Repository repository) {

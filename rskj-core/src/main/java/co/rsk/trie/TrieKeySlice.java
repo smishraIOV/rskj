@@ -121,4 +121,24 @@ public class TrieKeySlice {
     public static TrieKeySlice empty() {
         return new TrieKeySlice(new byte[0], 0, 0);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof TrieKeySlice)) return false;
+
+        TrieKeySlice that = (TrieKeySlice) o;
+
+        if (offset != that.offset) return false;
+        if (limit != that.limit) return false;
+        return Arrays.equals(expandedKey, that.expandedKey);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Arrays.hashCode(expandedKey);
+        result = 31 * result + offset;
+        result = 31 * result + limit;
+        return result;
+    }
 }
