@@ -49,6 +49,7 @@ public class PendingState implements AccountInformationProvider {
 
 
     public PendingState(RepositorySnapshot repository, TransactionSet pendingTransactions, TransactionExecutorFactory transactionExecutorFactory) {
+        // todo(fedejinich) should I add the storage rent manager here also?
         this.pendingRepository = repository.startTracking();
         this.pendingTransactions = pendingTransactions;
         this.transactionExecutorFactory = transactionExecutorFactory;

@@ -488,6 +488,7 @@ public class Program {
             getStorage().increaseNonce(senderAddress);
         }
         // Start tracking repository changes for the constructor of the contract
+        // todo(fedejinich) should I add the storage rent manager here also?
         Repository track = getStorage().startTracking();
 
         ProgramResult programResult = ProgramResult.empty();
@@ -725,6 +726,7 @@ public class Program {
                     contextAddress, msg.getOutDataOffs().longValue(), msg.getOutDataSize().longValue());
         }
 
+        // todo(fedejinich) should i add the storage rent manager here also?
         Repository track = getStorage().startTracking();
 
         // 2.1 PERFORM THE VALUE (endowment) PART
@@ -1339,6 +1341,7 @@ public class Program {
             return;
         }
 
+        // todo(fedejinich) should i add the storage rent manager here also?
         Repository track = getStorage().startTracking();
 
         RskAddress senderAddress = getOwnerRskAddress();

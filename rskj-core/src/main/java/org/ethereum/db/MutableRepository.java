@@ -42,7 +42,8 @@ import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
 
-import static co.rsk.storagerent.ValueContainingNode.OperationType.*;
+import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
+import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
 
 public class MutableRepository implements Repository {
     private static final Logger logger = LoggerFactory.getLogger("repository");
@@ -321,7 +322,11 @@ public class MutableRepository implements Repository {
     // To start tracking, a new repository is created, with a MutableTrieCache in the middle
     @Override
     public synchronized Repository startTracking() {
-        return new MutableRepository(new MutableTrieCache(mutableTrie));
+        MutableRepository repositoryWithCache = new MutableRepository(new MutableTrieCache(mutableTrie));
+        if(storageRentManager != null) {
+            repositoryWithCache.initStorageRentManager(storageRentManager);
+        }
+        return repositoryWithCache;
     }
 
     @Override
@@ -459,7 +464,13 @@ public class MutableRepository implements Repository {
         if(storageRentManager != null) {
             // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
             //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
-            this.storageRentManager.trackValueContainingNode(new ValueContainingNode(new ByteArrayWrapper(key), operationType, false)); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+            this.storageRentManager.trackValueContainingNode(
+                    new ValueContainingNode(
+                        new ByteArrayWrapper(key),
+                        operationType,
+                        false
+                    )
+            ); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
         }
     }
 

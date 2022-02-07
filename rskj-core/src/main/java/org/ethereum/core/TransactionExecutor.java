@@ -119,7 +119,6 @@ public class TransactionExecutor {
         this.txindex = txindex;
         this.coinbase = coinbase;
         this.track = track;
-        this.cacheTrack = track.startTracking();
         this.blockStore = blockStore;
         this.receiptStore = receiptStore;
         this.blockFactory = blockFactory;
@@ -131,6 +130,14 @@ public class TransactionExecutor {
         this.enableRemasc = remascEnabled;
         this.deletedAccounts = new HashSet<>(deletedAccounts);
         this.storageRentManager = new StorageRentManager(new HashMap<>());
+
+        // initializes storage rent manager for the current Repository,
+        // this will also initialize it in the future created caches (created with RepositorySnapshot.startTracking())
+        if(isStorageRentEnabled()) {
+            this.track.initStorageRentManager(storageRentManager);
+        }
+        
+        this.cacheTrack = this.track.startTracking();
     }
 
     /**

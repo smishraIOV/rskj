@@ -98,6 +98,7 @@ public class ReversibleTransactionExecutor {
     private TransactionExecutor reversibleExecution(RepositorySnapshot snapshot, Block executionBlock, RskAddress coinbase,
                                                     byte[] gasPrice, byte[] gasLimit, byte[] toAddress, byte[] value,
                                                     byte[] data, RskAddress fromAddress) {
+        // todo(fedejinich) should I add the storage rent manager here also?
         Repository track = snapshot.startTracking();
 
         byte[] nonce = track.getNonce(fromAddress).toByteArray();
