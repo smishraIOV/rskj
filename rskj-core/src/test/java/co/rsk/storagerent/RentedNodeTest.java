@@ -1,14 +1,13 @@
 package co.rsk.storagerent;
 
-import co.rsk.trie.TrieKeySlice;
 import org.ethereum.db.ByteArrayWrapper;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
 
-import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
-import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.READ_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.WRITE_OPERATION;
 import static org.junit.Assert.assertEquals;
 
 
@@ -19,7 +18,7 @@ import static org.junit.Assert.assertEquals;
  *
  * NOTE: rent & timestamp calculations are tested in StorageRentComputationTest
  * */
-public class ValueContainingNodeTest {
+public class RentedNodeTest {
 
     private static final ByteArrayWrapper SOME_KEY = new ByteArrayWrapper("key".getBytes(StandardCharsets.UTF_8));
     public static final long CURRENT_BLOCK_TIMESTAMP = new GregorianCalendar(
@@ -88,17 +87,12 @@ public class ValueContainingNodeTest {
         }
     }
 
-    private void checkPayableRent(ValueContainingNode.OperationType operationType, boolean loadsContractCode,
+    private void checkPayableRent(RentedNode.OperationType operationType, boolean loadsContractCode,
                                   Long lastRentPaidTimestamp, Long nodeSize, int expected) {
-        ValueContainingNode valueContainingNode = new ValueContainingNode(
-                SOME_KEY,
-                operationType,
-                loadsContractCode
-        );
-        valueContainingNode.setLastRentPaidTimestamp(lastRentPaidTimestamp);
-        valueContainingNode.setNodeSize(nodeSize);
+        RentedNode rentedNode = rentedNode(SOME_KEY, operationType,
+                loadsContractCode, nodeSize, lastRentPaidTimestamp);
 
-        assertEquals(expected, valueContainingNode.payableRent(CURRENT_BLOCK_TIMESTAMP));
+        assertEquals(expected, rentedNode.payableRent(CURRENT_BLOCK_TIMESTAMP));
     }
 
     @Test
@@ -165,16 +159,22 @@ public class ValueContainingNodeTest {
         }
     }
 
-    private void checkUpdatedRentTimestamp(ValueContainingNode.OperationType operationType, boolean loadsContractCode,
+    private void checkUpdatedRentTimestamp(RentedNode.OperationType operationType, boolean loadsContractCode,
                                            Long lastRentPaidTimestamp, Long nodeSize, long expected) {
-        ValueContainingNode valueContainingNode = new ValueContainingNode(
-                SOME_KEY,
+        RentedNode rentedNode = rentedNode(SOME_KEY, operationType,
+                loadsContractCode, nodeSize, lastRentPaidTimestamp);
+
+        assertEquals(expected, rentedNode.updatedRentTimestamp(CURRENT_BLOCK_TIMESTAMP));
+    }
+
+    private RentedNode rentedNode(ByteArrayWrapper someKey, RentedNode.OperationType operationType,
+                                  boolean loadsContractCode, Long nodeSize, Long lastRentPaidTimestamp) {
+        RentedNode rentedNode = new RentedNode(
+                someKey,
                 operationType,
                 loadsContractCode
         );
-        valueContainingNode.setLastRentPaidTimestamp(lastRentPaidTimestamp);
-        valueContainingNode.setNodeSize(nodeSize);
-
-        assertEquals(expected, valueContainingNode.updatedRentTimestamp(CURRENT_BLOCK_TIMESTAMP));
+        rentedNode.setStorageRentData(nodeSize, lastRentPaidTimestamp);
+        return rentedNode;
     }
 }

@@ -12,31 +12,31 @@ public class StorageRentManager {
 
     // rentedNodes are value-containing nodes (account state or storage cells nodes)
     // that are involved in a transaction execution.
-    private final Map<ByteArrayWrapper, ValueContainingNode> rentedNodes; // TODO(fedejinich) analyse collection overflows
+    private final Map<ByteArrayWrapper, RentedNode> rentedNodes; // TODO(fedejinich) analyse collection overflows
 
     // avoid duplicates by using a Set
     private final Set<ByteArrayWrapper> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
 
-    public StorageRentManager(Map<ByteArrayWrapper, ValueContainingNode> rentedNodes) {
+    public StorageRentManager(Map<ByteArrayWrapper, RentedNode> rentedNodes) {
         this.rentedNodes = rentedNodes;
     }
 
-    public void trackValueContainingNode(ValueContainingNode nodeToTrack) {
-        ByteArrayWrapper key = nodeToTrack.getKey();
+    public void trackNode(RentedNode node) {
+        ByteArrayWrapper key = node.getKey();
 
         if(this.rentedNodes.containsKey(key)) {
-            ValueContainingNode containedNode = this.rentedNodes.get(key);
-            if(containedNode.shouldBeReplaced(nodeToTrack)) {
+            RentedNode containedNode = this.rentedNodes.get(key);
+            if(containedNode.shouldBeReplaced(node)) {
                 // it needs to be replaced because it has the lowest threshold
-                this.rentedNodes.put(key, nodeToTrack);
+                this.rentedNodes.put(key, node);
             }
         } else {
-            this.rentedNodes.put(key, nodeToTrack);
+            this.rentedNodes.put(key, node);
         }
     }
 
     @VisibleForTesting
-    protected Map<ByteArrayWrapper, ValueContainingNode> getValueContainingNode() {
+    protected Map<ByteArrayWrapper, RentedNode> getRentedNodes() {
         return this.rentedNodes;
     }
 
@@ -48,14 +48,15 @@ public class StorageRentManager {
      * @return gas leftover
      * */
     public long payStorageRent(long gas, long currentBlockTimestamp, Repository repository) {
-        Collection<ValueContainingNode> rentedNodes = this.rentedNodes.values();
+        Collection<RentedNode> rentedNodes = this.rentedNodes.values();
 
         // fetch relevant data to pay storage rent
         rentedNodes.forEach(node -> {
             Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
 
-            node.setNodeSize(storageRentData.get("nodeSize"));
-            node.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
+            node.setStorageRentData(storageRentData.get("nodeSize"), storageRentData.get("lastRentPaidTimestamp"));
+//            node.setNodeSize(storageRentData.get("nodeSize"));
+//            node.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
         });
 
         long cumulativeRent = rentedNodes.stream()

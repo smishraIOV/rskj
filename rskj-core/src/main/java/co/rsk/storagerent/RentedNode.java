@@ -5,14 +5,14 @@ import org.ethereum.db.ByteArrayWrapper;
 import java.util.Objects;
 
 import static co.rsk.storagerent.StorageRentComputation.*;
-import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
-import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.READ_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.WRITE_OPERATION;
 
 /**
- * Represents an existing value-containing trie node.
- * Given an existing trie key, returns the relevant data for paying the storage rent.
+ * A RentedNode contains the relevant data of an involved node during transaction execution.
+ * It also returns the relevant information to pay the storage rent.
  * */
-public class ValueContainingNode {
+public class RentedNode {
     public enum OperationType { WRITE_OPERATION, READ_OPERATION }
 
     private final ByteArrayWrapper key; // using this type because it's harder to compare raw byte arrays (byte[])
@@ -23,7 +23,7 @@ public class ValueContainingNode {
     private Long lastRentPaidTimestamp;
 
     // todo(fedejinich) WRITE OPERATION & LOADS CONTRACT CODE, IS THAT AN ILLEGAL STATE?
-    public ValueContainingNode(ByteArrayWrapper key, OperationType operationType, boolean loadsContractCode) {
+    public RentedNode(ByteArrayWrapper key, OperationType operationType, boolean loadsContractCode) {
         this.key = key;
         this.operationType = operationType;
         this.loadsContractCode = loadsContractCode;
@@ -54,8 +54,26 @@ public class ValueContainingNode {
         );
     }
 
+    public void setStorageRentData(Long nodeSize, Long lastRentPaidTimestamp) {
+        this.nodeSize = nodeSize;
+        this.lastRentPaidTimestamp = lastRentPaidTimestamp;
+    }
+
     public ByteArrayWrapper getKey() {
         return this.key;
+    }
+
+    /**
+     * Determines if a node should be replaced by another one due to different operation types,
+     * the operation with the lowest threshold it's the one that leads the storage rent payment
+     * */
+    public boolean shouldBeReplaced(RentedNode anotherNode) {
+        return operationType.equals(READ_OPERATION) &&
+                anotherNode.operationType.equals(WRITE_OPERATION);
+    }
+
+    public OperationType getOperationType() {
+        return this.operationType;
     }
 
     private long getNodeSize() {
@@ -70,27 +88,6 @@ public class ValueContainingNode {
             throw new IllegalStateException("no lastRentPaidTimestamp, initialize it by fetching storage rent data with the RentManager");
         }
         return lastRentPaidTimestamp;
-    }
-
-    public void setNodeSize(Long nodeSize) {
-        this.nodeSize = nodeSize;
-    }
-
-    public void setLastRentPaidTimestamp(Long lastRentPaidTimestamp) {
-        this.lastRentPaidTimestamp = lastRentPaidTimestamp;
-    }
-
-    /**
-     * Determines if a node should be replaced by another one due to different operation types,
-     * the operation with the lowest threshold it's the one that leads the storage rent payment
-     * */
-    public boolean shouldBeReplaced(ValueContainingNode anotherNode) {
-        return operationType.equals(READ_OPERATION) &&
-                anotherNode.operationType.equals(WRITE_OPERATION);
-    }
-
-    public OperationType getOperationType() {
-        return this.operationType;
     }
 
     private long duration(long currentBlockTimsetamp) {
@@ -110,8 +107,8 @@ public class ValueContainingNode {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof ValueContainingNode)) return false;
-        ValueContainingNode that = (ValueContainingNode) o;
+        if (!(o instanceof RentedNode)) return false;
+        RentedNode that = (RentedNode) o;
         return loadsContractCode == that.loadsContractCode &&
                 getKey().equals(that.getKey()) &&
                 getOperationType() == that.getOperationType() &&

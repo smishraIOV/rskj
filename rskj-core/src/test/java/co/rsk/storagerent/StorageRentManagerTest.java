@@ -1,6 +1,5 @@
 package co.rsk.storagerent;
 
-import co.rsk.trie.TrieKeySlice;
 import org.ethereum.core.Repository;
 import org.ethereum.db.ByteArrayWrapper;
 import org.ethereum.vm.program.Program;
@@ -11,8 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
-import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.READ_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.WRITE_OPERATION;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -24,8 +23,8 @@ public class StorageRentManagerTest {
             .getTime();
 
     private StorageRentManager storageRentManager;
-    private List<ValueContainingNode> testNodes;
-    private Map<ByteArrayWrapper, ValueContainingNode> valueContainingNodes;
+    private List<RentedNode> testNodes;
+    private Map<ByteArrayWrapper, RentedNode> valueContainingNodes;
 
     @Before
     public void setup() {
@@ -39,11 +38,11 @@ public class StorageRentManagerTest {
         trackValueContainingNodes(storageRentManager, testNodes());
 
         // all new nodes, they should be tracked normally
-        assertEquals(6, storageRentManager.getValueContainingNode().size());
-        for(int i = 0; i < storageRentManager.getValueContainingNode().size(); i++ ) {
+        assertEquals(6, storageRentManager.getRentedNodes().size());
+        for(int i = 0; i < storageRentManager.getRentedNodes().size(); i++ ) {
             ByteArrayWrapper key = new ByteArrayWrapper(("key" + (i + 1)).getBytes(StandardCharsets.UTF_8));
-            assertEquals(new ValueContainingNode(key, READ_OPERATION, LOADS_CONTRACT),
-                    storageRentManager.getValueContainingNode().get(key));
+            assertEquals(new RentedNode(key, READ_OPERATION, LOADS_CONTRACT),
+                    storageRentManager.getRentedNodes().get(key));
         }
     }
 
@@ -55,24 +54,24 @@ public class StorageRentManagerTest {
         // track new write-operation-nodes, some of them are already tracked nodes but with different operation type,
         // should replace key3, key5 and add key7
         trackValueContainingNodes(storageRentManager, Arrays.asList(
-                new ValueContainingNode(
+                new RentedNode(
                     new ByteArrayWrapper("key3".getBytes(StandardCharsets.UTF_8)),
                     WRITE_OPERATION,
                     LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                     new ByteArrayWrapper("key5".getBytes(StandardCharsets.UTF_8)),
                     WRITE_OPERATION,
                     LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                     new ByteArrayWrapper("key7".getBytes(StandardCharsets.UTF_8)),
                     WRITE_OPERATION,
                     LOADS_CONTRACT)
             )
         );
 
-        assertEquals(7, storageRentManager.getValueContainingNode().size());
+        assertEquals(7, storageRentManager.getRentedNodes().size());
 
-        List<ValueContainingNode> writeNodes = storageRentManager.getValueContainingNode()
+        List<RentedNode> writeNodes = storageRentManager.getRentedNodes()
                 .values()
                 .stream()
                 .filter(v -> v.getOperationType().equals(WRITE_OPERATION))
@@ -86,7 +85,7 @@ public class StorageRentManagerTest {
         assertEquals(new ByteArrayWrapper("key7".getBytes(StandardCharsets.UTF_8)), writeNodes.get(2).getKey());
         assertEquals(WRITE_OPERATION, writeNodes.get(2).getOperationType());
 
-        List<ValueContainingNode> readNodes = storageRentManager.getValueContainingNode()
+        List<RentedNode> readNodes = storageRentManager.getRentedNodes()
                 .values()
                 .stream()
                 .filter(v -> v.getOperationType().equals(READ_OPERATION))
@@ -148,7 +147,7 @@ public class StorageRentManagerTest {
         assertEquals(3, storageRentManager.getMismatches().size());
     }
 
-    private void mockStorageRentData(Repository repository, List<ValueContainingNode> testNodes) {
+    private void mockStorageRentData(Repository repository, List<RentedNode> testNodes) {
         testNodes.forEach(t -> {
             Map<String, Long> storageRentData = new HashMap<>();
             storageRentData.put("nodeSize", 32L); // maximum storage cell size
@@ -159,36 +158,36 @@ public class StorageRentManagerTest {
         });
     }
 
-    private void trackValueContainingNodes(StorageRentManager storageRentManager, List<ValueContainingNode> nodes) {
+    private void trackValueContainingNodes(StorageRentManager storageRentManager, List<RentedNode> nodes) {
         nodes.forEach(v -> {
-            storageRentManager.trackValueContainingNode(v);
+            storageRentManager.trackNode(v);
             verify(valueContainingNodes).put(v.getKey(), v);
         });
     }
 
-    private List<ValueContainingNode> testNodes() {
+    private List<RentedNode> testNodes() {
         return Arrays.asList(
-                new ValueContainingNode(
+                new RentedNode(
                         new ByteArrayWrapper("key1".getBytes(StandardCharsets.UTF_8)),
                         READ_OPERATION,
                         LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                         new ByteArrayWrapper("key2".getBytes(StandardCharsets.UTF_8)),
                         READ_OPERATION,
                         LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                         new ByteArrayWrapper("key3".getBytes(StandardCharsets.UTF_8)),
                         READ_OPERATION,
                         LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                         new ByteArrayWrapper("key4".getBytes(StandardCharsets.UTF_8)),
                         READ_OPERATION,
                         LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                         new ByteArrayWrapper("key5".getBytes(StandardCharsets.UTF_8)),
                         READ_OPERATION,
                         LOADS_CONTRACT),
-                new ValueContainingNode(
+                new RentedNode(
                         new ByteArrayWrapper("key6".getBytes(StandardCharsets.UTF_8)),
                         READ_OPERATION,
                         LOADS_CONTRACT)

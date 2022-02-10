@@ -25,8 +25,8 @@ import co.rsk.crypto.Keccak256;
 import co.rsk.db.MutableTrieCache;
 import co.rsk.db.MutableTrieImpl;
 import co.rsk.storagerent.StorageRentManager;
-import co.rsk.storagerent.ValueContainingNode;
-import co.rsk.storagerent.ValueContainingNode.OperationType;
+import co.rsk.storagerent.RentedNode;
+import co.rsk.storagerent.RentedNode.OperationType;
 import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
@@ -42,8 +42,8 @@ import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
 
-import static co.rsk.storagerent.ValueContainingNode.OperationType.READ_OPERATION;
-import static co.rsk.storagerent.ValueContainingNode.OperationType.WRITE_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.READ_OPERATION;
+import static co.rsk.storagerent.RentedNode.OperationType.WRITE_OPERATION;
 
 public class MutableRepository implements Repository {
     private static final Logger logger = LoggerFactory.getLogger("repository");
@@ -453,7 +453,7 @@ public class MutableRepository implements Repository {
     }
 
     /**
-     * Tracks a value-containing node.
+     * Tracks the relevant data of a value-containing node.
      * Tracked nodes are then used to pay the storage rent (RSKIP240).
      *
      * @param key an existing trie key
@@ -464,8 +464,8 @@ public class MutableRepository implements Repository {
         if(storageRentManager != null) {
             // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
             //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
-            this.storageRentManager.trackValueContainingNode(
-                    new ValueContainingNode(
+            this.storageRentManager.trackNode(
+                    new RentedNode(
                         new ByteArrayWrapper(key),
                         operationType,
                         false
