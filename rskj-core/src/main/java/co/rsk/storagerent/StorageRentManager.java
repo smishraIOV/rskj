@@ -6,37 +6,38 @@ import org.ethereum.db.ByteArrayWrapper;
 import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
 
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class StorageRentManager {
-    // TODO(fedejinich) analyse collection overflows
-    private final Map<ByteArrayWrapper, ValueContainingNode> valueContainingNodes;
+
+    // rentedNodes are value-containing nodes (account state or storage cells nodes)
+    // that are involved in a transaction execution.
+    private final Map<ByteArrayWrapper, ValueContainingNode> rentedNodes; // TODO(fedejinich) analyse collection overflows
+
     // avoid duplicates by using a Set
     private final Set<ByteArrayWrapper> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
 
-    public StorageRentManager(Map<ByteArrayWrapper, ValueContainingNode> valueContainingNodes) {
-        this.valueContainingNodes = valueContainingNodes;
+    public StorageRentManager(Map<ByteArrayWrapper, ValueContainingNode> rentedNodes) {
+        this.rentedNodes = rentedNodes;
     }
 
     public void trackValueContainingNode(ValueContainingNode nodeToTrack) {
         ByteArrayWrapper key = nodeToTrack.getKey();
 
-        if(this.valueContainingNodes.containsKey(key)) {
-            ValueContainingNode containedNode = this.valueContainingNodes.get(key);
+        if(this.rentedNodes.containsKey(key)) {
+            ValueContainingNode containedNode = this.rentedNodes.get(key);
             if(containedNode.shouldBeReplaced(nodeToTrack)) {
                 // it needs to be replaced because it has the lowest threshold
-                this.valueContainingNodes.put(key, nodeToTrack);
+                this.rentedNodes.put(key, nodeToTrack);
             }
         } else {
-            this.valueContainingNodes.put(key, nodeToTrack);
+            this.rentedNodes.put(key, nodeToTrack);
         }
     }
 
     @VisibleForTesting
     protected Map<ByteArrayWrapper, ValueContainingNode> getValueContainingNode() {
-        return this.valueContainingNodes;
+        return this.rentedNodes;
     }
 
     /**
@@ -47,38 +48,31 @@ public class StorageRentManager {
      * @return gas leftover
      * */
     public long payStorageRent(long gas, long currentBlockTimestamp, Repository repository) {
-        fetchStorageRentData(repository); // fetch relevant data to pay storage rent
+        Collection<ValueContainingNode> rentedNodes = this.rentedNodes.values();
 
-        long cumulativeRent = cumulativeRent(currentBlockTimestamp);
+        // fetch relevant data to pay storage rent
+        rentedNodes.forEach(node -> {
+            Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
+
+            node.setNodeSize(storageRentData.get("nodeSize"));
+            node.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
+        });
+
+        long cumulativeRent = rentedNodes.stream()
+                .map(v -> v.payableRent(currentBlockTimestamp))
+                .reduce(GasCost::add)
+                .get(); // todo(fedejinich) this should always be present, should I throw an exception?
 
         if(gas < cumulativeRent) {
             // todo(fedejinich) this is not the right way to throw an OOG
             throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
         }
 
-        valueContainingNodes.values().forEach(node -> repository.updateLastRentPaidTimestamp(
+        rentedNodes.forEach(node -> repository.updateLastRentPaidTimestamp(
                 node.getKey().getData(),
                 node.updatedRentTimestamp(currentBlockTimestamp)));
 
         return GasCost.subtract(gas, cumulativeRent);
-    }
-
-    private long cumulativeRent(long currentBlockTimestamp) {
-        return valueContainingNodes
-                .values()
-                .stream()
-                .map(v -> v.payableRent(currentBlockTimestamp))
-                .reduce(GasCost::add)
-                .get(); // todo(fedejinich) this should always be present, should I throw an exception?
-    }
-
-    private void fetchStorageRentData(Repository repository) {
-        this.valueContainingNodes.values().forEach(valueContainingNode -> {
-            Map<String, Long> storageRentData = repository.fetchStorageRentData(valueContainingNode.getKey().getData());
-
-            valueContainingNode.setNodeSize(storageRentData.get("nodeSize"));
-            valueContainingNode.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
-        });
     }
 
     public void trackMismatch(byte[] key) {
