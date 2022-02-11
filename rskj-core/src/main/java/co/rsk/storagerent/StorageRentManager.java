@@ -36,7 +36,7 @@ public class StorageRentManager {
     }
 
     @VisibleForTesting
-    protected Map<ByteArrayWrapper, RentedNode> getRentedNodes() {
+    public Map<ByteArrayWrapper, RentedNode> getRentedNodes() {
         return this.rentedNodes;
     }
 
@@ -55,8 +55,6 @@ public class StorageRentManager {
             Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
 
             node.setStorageRentData(storageRentData.get("nodeSize"), storageRentData.get("lastRentPaidTimestamp"));
-//            node.setNodeSize(storageRentData.get("nodeSize"));
-//            node.setLastRentPaidTimestamp(storageRentData.get("lastRentPaidTimestamp"));
         });
 
         long cumulativeRent = rentedNodes.stream()
@@ -82,5 +80,13 @@ public class StorageRentManager {
 
     public Set<ByteArrayWrapper> getMismatches() {
         return mismatches;
+    }
+
+    /**
+     * Commits nodes from another storage rent manager, which is used to track nodes from internal transactions
+     * @param temporaryStorageRentManager a temporary rent manager, only used to track nodes
+     * */
+    public void commit(StorageRentManager temporaryStorageRentManager) {
+        temporaryStorageRentManager.rentedNodes.values().forEach(node -> trackNode(node));
     }
 }
