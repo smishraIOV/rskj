@@ -53,7 +53,9 @@ public class MutableRepository implements Repository {
 
     private final TrieKeyMapper trieKeyMapper;
     private final MutableTrie mutableTrie;
-    private StorageRentManager storageRentManager;
+
+    private StorageRentManager storageRentManager; // the real storage rent manager, used to track nodes and pay storage rent
+    private StorageRentManager temporaryStorageRentManager; // only used to track nodes in temporary repositories
 
     public MutableRepository(TrieStore trieStore, Trie trie) {
         this(new MutableTrieImpl(trieStore, trie));
@@ -323,8 +325,11 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized Repository startTracking() {
         MutableRepository repositoryWithCache = new MutableRepository(new MutableTrieCache(mutableTrie));
-        if(storageRentManager != null) {
-            repositoryWithCache.initStorageRentManager(storageRentManager);
+        if(isStorageRentEnabled()) {
+            repositoryWithCache.initStorageRentManager(this.storageRentManager);
+
+            // creates new temporary rent manager to track nodes and then commit them into the real storageRentManager
+            this.temporaryStorageRentManager = new StorageRentManager(new HashMap<>());
         }
         return repositoryWithCache;
     }
@@ -337,11 +342,18 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void commit() {
         mutableTrie.commit();
+        if(isStorageRentEnabled() && useTemporaryStorageRentManger()) {
+            this.storageRentManager.commit(this.temporaryStorageRentManager);
+        }
     }
 
     @Override
     public synchronized void rollback() {
         mutableTrie.rollback();
+        // todo(fedejinich) ideally this should be part of a RepositoryWithCache
+        if(isStorageRentEnabled() && useTemporaryStorageRentManger()) {
+            this.temporaryStorageRentManager = new StorageRentManager(new HashMap<>());
+        }
     }
 
     @Override
@@ -453,31 +465,40 @@ public class MutableRepository implements Repository {
     }
 
     /**
-     * Tracks the relevant data of a value-containing node.
-     * Tracked nodes are then used to pay the storage rent (RSKIP240).
+     * Tracks the relevant data of a value-containing node as RentNode (RSKIP240).
      *
-     * @param key an existing trie key
+     * @param rawKey an existing trie key
      * @param operationType an operation type (read/write)
-//     * @param loadsContractCode if the operation loads contract code
      * */
-    private void trackNode(byte[] key, OperationType operationType) {
-        if(storageRentManager != null) {
-            // todo(fedejinich) ALTERNATIVE since it's an existing key, we can track the entire trie instance (but it's no the most performant option)
-            //   ANOTHER ALTERNATIVE it's to track each node inside Trie class (at put/find), that's the most performant option but it's not te most maintainable one (it spreads business logic inside Trie class)
-            this.storageRentManager.trackNode(
-                    new RentedNode(
-                        new ByteArrayWrapper(key),
-                        operationType,
-                        false
-                    )
-            ); // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+    private void trackNode(byte[] rawKey, OperationType operationType) {
+        // TODO(fedejinich) wrap the null check with a new method (aka isStorageRentEnabled)
+        if(isStorageRentEnabled()) {
+            // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+            ByteArrayWrapper key = new ByteArrayWrapper(rawKey);
+            RentedNode node = new RentedNode(key, operationType,false);
+
+            // temporary repositories (with MutableTrieCache) tracks nodes in a separate StorageRentManager
+            // and then commits them at MutableRepository.commit()
+            if(useTemporaryStorageRentManger()) {
+                this.temporaryStorageRentManager.trackNode(node);
+            } else {
+                this.storageRentManager.trackNode(node);
+            }
         }
     }
 
+    private boolean useTemporaryStorageRentManger() {
+        return this.temporaryStorageRentManager != null;
+    }
+
     private void trackMismatch(byte[] key) {
-        // TODO(fedejinich) wrap the null check with a new method (aka useRentManager)
-        if(storageRentManager != null) {
+        // TODO(fedejinich) wrap the null check with a new method (aka isStorageRentEnabled)
+        if(isStorageRentEnabled()) {
             this.storageRentManager.trackMismatch(key);
         }
+    }
+
+    private boolean isStorageRentEnabled() {
+        return storageRentManager != null;
     }
 }
