@@ -37,6 +37,7 @@ import co.rsk.peg.BridgeSupportFactory;
 import co.rsk.peg.BtcBlockStoreWithCache.Factory;
 import co.rsk.peg.RepositoryBtcBlockStoreWithCache;
 import co.rsk.test.builders.BlockChainBuilder;
+import co.rsk.test.dsl.BlockExecutorDSL;
 import co.rsk.test.dsl.DslParser;
 import co.rsk.test.dsl.DslProcessorException;
 import co.rsk.test.dsl.WorldDslProcessor;
@@ -166,7 +167,7 @@ public class World {
                 btcBlockStoreFactory, config.getNetworkConstants().getBridgeConstants(), config.getActivationConfig());
 
         if (this.blockExecutor == null) {
-            this.blockExecutor = new BlockExecutor(
+            this.blockExecutor = new BlockExecutorDSL(
                     config.getActivationConfig(),
                     new RepositoryLocator(getTrieStore(), stateRootHandler),
                     new TransactionExecutorFactory(
