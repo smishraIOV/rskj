@@ -62,7 +62,7 @@ public class World {
     private RskSystemProperties config;
     private BlockChainImpl blockChain;
     private NodeBlockProcessor blockProcessor;
-    private BlockExecutor blockExecutor;
+    private BlockExecutorDSL blockExecutor;
     private Map<String, Block> blocks = new HashMap<>();
     private Map<String, Account> accounts = new HashMap<>();
     private Map<String, Transaction> transactions = new HashMap<>();
@@ -264,4 +264,7 @@ public class World {
         return this.receiptStore;
     }
 
+    public TransactionExecutor getTransactionExecutor(String txHash) {
+        return this.blockExecutor.getTransactionExecutors().get(txHash);
+    }
 }

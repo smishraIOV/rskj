@@ -706,4 +706,9 @@ public class TransactionExecutor {
     }
 
     public Coin getPaidFees() { return paidFees; }
+
+    @VisibleForTesting
+    public StorageRentManager getStorageRentManager() {
+        return this.storageRentManager;
+    }
 }

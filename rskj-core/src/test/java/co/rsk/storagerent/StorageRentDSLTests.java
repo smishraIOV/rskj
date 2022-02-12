@@ -1,8 +1,15 @@
 package co.rsk.storagerent;
 
 import co.rsk.test.World;
+import co.rsk.test.dsl.DslProcessorException;
 import org.apache.commons.lang3.NotImplementedException;
+import org.ethereum.core.TransactionExecutor;
 import org.junit.Test;
+
+import java.io.FileNotFoundException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 /**
  * This is the grey box testing of the StorageRent feature (RSKIP240)
@@ -10,13 +17,22 @@ import org.junit.Test;
 public class StorageRentDSLTests {
 
     /**
-     * Executes a simple value transfer
-     *
-     * It shouldn't trigger storage rent
+     * Executes a simple value transfer,
+     * it shouldn't trigger storage rent.
      * */
     @Test
-    public void valueTransfer() {
-        throw new NotImplementedException("needs to be implemented");
+    public void valueTransfer() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent.txt");
+
+        String txHash1 = world.getTransactionByName("tx01")
+                .getHash()
+                .toHexString();
+
+        TransactionExecutor transactionExecutor = world.getTransactionExecutor(txHash1);
+        StorageRentManager storageRentManager = transactionExecutor.getStorageRentManager();
+
+        assertFalse(transactionExecutor.isStorageRentEnabled());
+        assertEquals(0, storageRentManager.getRentedNodes().size());
     }
 
     /**
