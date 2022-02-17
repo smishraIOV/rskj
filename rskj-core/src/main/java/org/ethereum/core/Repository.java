@@ -22,12 +22,17 @@ package org.ethereum.core;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.db.RepositorySnapshot;
-import co.rsk.storagerent.StorageRentManager;
+import co.rsk.storagerent.RentedNode;
 import co.rsk.trie.Trie;
+import org.ethereum.db.ByteArrayWrapper;
+import org.ethereum.db.TrackedNode;
 import org.ethereum.vm.DataWord;
 
 import java.math.BigInteger;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface Repository extends RepositorySnapshot {
     Trie getTrie();
@@ -146,9 +151,11 @@ public interface Repository extends RepositorySnapshot {
         addBalance(toAddr, value);
     }
 
-    void initStorageRentManager(StorageRentManager storageRentManager);
-
     void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp);
 
     Map<String, Long> fetchStorageRentData(byte[] key);
+
+    void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches);
+
+    Collection<RentedNode> getStorageRentNodes();
 }

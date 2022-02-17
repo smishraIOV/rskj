@@ -22,19 +22,19 @@ package org.ethereum.vm.program;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
-import co.rsk.storagerent.StorageRentManager;
+import co.rsk.storagerent.RentedNode;
 import co.rsk.trie.Trie;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
+import org.ethereum.db.ByteArrayWrapper;
+import org.ethereum.db.TrackedNode;
 import org.ethereum.vm.DataWord;
 import org.ethereum.vm.program.invoke.ProgramInvoke;
 import org.ethereum.vm.program.listener.ProgramListener;
 import org.ethereum.vm.program.listener.ProgramListenerAware;
 
 import java.math.BigInteger;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /*
  * A Storage is a proxy class for Repository. It encapsulates a repository providing tracing services.
@@ -229,11 +229,6 @@ public class Storage implements Repository, ProgramListenerAware {
     // todo(fedejinich) I guess initRentManager & payStorageRent should be unsupported also
 
     @Override
-    public void initStorageRentManager(StorageRentManager storageRentManager) {
-        repository.initStorageRentManager(storageRentManager);
-    }
-
-    @Override
     public void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp) {
         repository.updateLastRentPaidTimestamp(key, updatedRentTimestamp);
     }
@@ -241,5 +236,15 @@ public class Storage implements Repository, ProgramListenerAware {
     @Override
     public Map<String, Long> fetchStorageRentData(byte[] key) {
         return repository.fetchStorageRentData(key);
+    }
+
+    @Override
+    public void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches) {
+        repository.mergeTrackedNodes(trackedNodes, mismatches);
+    }
+
+    @Override
+    public Collection<RentedNode> getStorageRentNodes() {
+        return repository.getStorageRentNodes();
     }
 }

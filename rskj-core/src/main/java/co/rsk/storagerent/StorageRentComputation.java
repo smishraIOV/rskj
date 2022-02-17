@@ -20,6 +20,7 @@
 package co.rsk.storagerent;
 
 
+// todo(fedejinich) this class can be moved into StorageRent
 /**
  * Rent computation util according to the RSKIP240
  * https://github.com/rsksmart/RSKIPs/blob/master/IPs/RSKIP240.md

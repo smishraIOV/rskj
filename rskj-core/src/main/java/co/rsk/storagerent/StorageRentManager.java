@@ -1,55 +1,36 @@
 package co.rsk.storagerent;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.core.Repository;
-import org.ethereum.db.ByteArrayWrapper;
 import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
+/**
+ * Stateless class, useful for the StorageRent feature (RSKIP240)
+ * https://github.com/rsksmart/RSKIPs/blob/master/IPs/RSKIP240.md
+ * */
 public class StorageRentManager {
+    public static final long NO_RENT_TO_PAY = -1;
 
-    // rentedNodes are value-containing nodes (account state or storage cells nodes)
-    // that are involved in a transaction execution.
-    private final Map<ByteArrayWrapper, RentedNode> rentedNodes; // TODO(fedejinich) analyse collection overflows
+    private long paidRent = NO_RENT_TO_PAY;
+    private final Collection<RentedNode> rentedNodes;
 
-    // avoid duplicates by using a Set
-    private final Set<ByteArrayWrapper> mismatches = new HashSet<>(); // TODO(fedejinich) refactor this, create a default constructor
-
-    public StorageRentManager(Map<ByteArrayWrapper, RentedNode> rentedNodes) {
-        this.rentedNodes = rentedNodes;
-    }
-
-    public void trackNode(RentedNode node) {
-        ByteArrayWrapper key = node.getKey();
-
-        if(this.rentedNodes.containsKey(key)) {
-            RentedNode containedNode = this.rentedNodes.get(key);
-            if(containedNode.shouldBeReplaced(node)) {
-                // it needs to be replaced because it has the lowest threshold
-                this.rentedNodes.put(key, node);
-            }
-        } else {
-            this.rentedNodes.put(key, node);
-        }
-    }
-
-    @VisibleForTesting
-    public Map<ByteArrayWrapper, RentedNode> getRentedNodes() {
-        return this.rentedNodes;
+    public StorageRentManager(Collection<RentedNode> storageRentNodes) {
+        this.rentedNodes = storageRentNodes;
     }
 
     /**
-     * Pays storage rent (RSKIP240)
+     * Pay storage rent
      *
      * @param gas initial gas amount
-     * @param repository a repository to fetch the relevant data and to update the storage rent timestamps
+     * @param executionBlockTimestamp execution block timestamp
+     * @param repository repository to fetch the relevant data and to update the rent timestamps
      * @return gas leftover
      * */
-    public long payStorageRent(long gas, long currentBlockTimestamp, Repository repository) {
-        Collection<RentedNode> rentedNodes = this.rentedNodes.values();
-
+    public long pay(long gas, long executionBlockTimestamp, Repository repository) {
         // fetch relevant data to pay storage rent
         rentedNodes.forEach(node -> {
             Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
@@ -58,7 +39,7 @@ public class StorageRentManager {
         });
 
         long cumulativeRent = rentedNodes.stream()
-                .map(v -> v.payableRent(currentBlockTimestamp))
+                .map(v -> v.payableRent(executionBlockTimestamp))
                 .reduce(GasCost::add)
                 .get(); // todo(fedejinich) this should always be present, should I throw an exception?
 
@@ -69,24 +50,18 @@ public class StorageRentManager {
 
         rentedNodes.forEach(node -> repository.updateLastRentPaidTimestamp(
                 node.getKey().getData(),
-                node.updatedRentTimestamp(currentBlockTimestamp)));
+                node.updatedRentTimestamp(executionBlockTimestamp)));
+
+        this.paidRent = cumulativeRent;
 
         return GasCost.subtract(gas, cumulativeRent);
     }
 
-    public void trackMismatch(byte[] key) {
-        this.mismatches.add(new ByteArrayWrapper(key));
+    public long getPaidRent() {
+        return paidRent;
     }
 
-    public Set<ByteArrayWrapper> getMismatches() {
-        return mismatches;
-    }
-
-    /**
-     * Commits nodes from another storage rent manager, which is used to track nodes from internal transactions
-     * @param temporaryStorageRentManager a temporary rent manager, only used to track nodes
-     * */
-    public void commit(StorageRentManager temporaryStorageRentManager) {
-        temporaryStorageRentManager.rentedNodes.values().forEach(node -> trackNode(node));
+    public Collection<RentedNode> getRentedNodes() {
+        return rentedNodes;
     }
 }

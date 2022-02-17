@@ -91,6 +91,7 @@ public class TransactionExecutor {
 
     private TransactionReceipt receipt;
     private ProgramResult result = new ProgramResult();
+    private StorageRentManager storageRentManager = new StorageRentManager(Collections.EMPTY_SET);
     private final Block executionBlock;
 
     private VM vm;
@@ -106,8 +107,6 @@ public class TransactionExecutor {
     private SignatureCache signatureCache;
 
     private boolean localCall = false;
-
-    private final StorageRentManager storageRentManager;
 
     public TransactionExecutor(
             Constants constants, ActivationConfig activationConfig, Transaction tx, int txindex, RskAddress coinbase,
@@ -134,15 +133,6 @@ public class TransactionExecutor {
 
         this.blockTrack = blockTrack;
         this.transactionTrack = this.blockTrack.startTracking();
-
-        // initializes storage rent manager for the blockTrack,
-        // this will also initialize it in the future created caches (created with RepositorySnapshot.startTracking())
-        if(isStorageRentEnabled()) {
-            this.storageRentManager = new StorageRentManager(new HashMap<>());
-            this.blockTrack.initStorageRentManager(storageRentManager);
-        } else {
-            this.storageRentManager = null;
-        }
     }
 
     /**
@@ -168,13 +158,6 @@ public class TransactionExecutor {
      * set readyToExecute = true
      */
     private boolean init() {
-        if(isStorageRentEnabled()) {
-            // they both share the same StorageRentManager instance to track ALL the involved
-            // value-containing nodes during the tx execution
-            blockTrack.initStorageRentManager(storageRentManager);
-            transactionTrack.initStorageRentManager(storageRentManager);
-        }
-
         basicTxCost = tx.transactionCost(constants, activations);
 
         if (localCall) {
@@ -530,9 +513,10 @@ public class TransactionExecutor {
         logger.trace("Finalize transaction {} {}", toBI(tx.getNonce()), tx.getHash());
 
         if(isStorageRentEnabled()) {
+            this.storageRentManager = new StorageRentManager(storageRentTrack().getStorageRentNodes());
+
             // pay storage rent
-//            gasLeftover = storageRentManager.payStorageRent(gasLeftover, executionBlock.getTimestamp(), transactionTrack);
-            // todo(fedejinich) SHOULD I REMOVE THE RENT MANAGER FROM THE TRIE?
+            gasLeftover = storageRentManager.pay(gasLeftover, executionBlock.getTimestamp(), storageRentTrack());
         }
 
         // todo(fedejinich) if it's a precompiled execution, it commits cache twice, here and at 422, is that ok?
@@ -580,6 +564,10 @@ public class TransactionExecutor {
         logger.trace("tx listener done");
 
         logger.trace("tx finalization done");
+    }
+
+    private Repository storageRentTrack() {
+        return precompiledContract != null ? blockTrack : transactionTrack;
     }
 
     private void localCallFinalization() {
@@ -711,4 +699,8 @@ public class TransactionExecutor {
     }
 
     public Coin getPaidFees() { return paidFees; }
+
+    public StorageRentManager getStorageRentManager() {
+        return this.storageRentManager;
+    }
 }

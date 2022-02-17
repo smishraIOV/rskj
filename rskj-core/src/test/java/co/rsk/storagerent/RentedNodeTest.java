@@ -1,15 +1,16 @@
 package co.rsk.storagerent;
 
 import org.ethereum.db.ByteArrayWrapper;
+import org.ethereum.db.OperationType;
+import org.ethereum.db.TrackedNode;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
 
-import static co.rsk.storagerent.RentedNode.OperationType.READ_OPERATION;
-import static co.rsk.storagerent.RentedNode.OperationType.WRITE_OPERATION;
+import static org.ethereum.db.OperationType.READ_OPERATION;
+import static org.ethereum.db.OperationType.WRITE_OPERATION;
 import static org.junit.Assert.assertEquals;
-
 
 /**
  * Test ValueContainingNode public methods:
@@ -87,7 +88,7 @@ public class RentedNodeTest {
         }
     }
 
-    private void checkPayableRent(RentedNode.OperationType operationType, boolean loadsContractCode,
+    private void checkPayableRent(OperationType operationType, boolean loadsContractCode,
                                   Long lastRentPaidTimestamp, Long nodeSize, int expected) {
         RentedNode rentedNode = rentedNode(SOME_KEY, operationType,
                 loadsContractCode, nodeSize, lastRentPaidTimestamp);
@@ -159,7 +160,7 @@ public class RentedNodeTest {
         }
     }
 
-    private void checkUpdatedRentTimestamp(RentedNode.OperationType operationType, boolean loadsContractCode,
+    private void checkUpdatedRentTimestamp(OperationType operationType, boolean loadsContractCode,
                                            Long lastRentPaidTimestamp, Long nodeSize, long expected) {
         RentedNode rentedNode = rentedNode(SOME_KEY, operationType,
                 loadsContractCode, nodeSize, lastRentPaidTimestamp);
@@ -167,12 +168,14 @@ public class RentedNodeTest {
         assertEquals(expected, rentedNode.updatedRentTimestamp(CURRENT_BLOCK_TIMESTAMP));
     }
 
-    private RentedNode rentedNode(ByteArrayWrapper someKey, RentedNode.OperationType operationType,
+    private RentedNode rentedNode(ByteArrayWrapper someKey, OperationType operationType,
                                   boolean loadsContractCode, Long nodeSize, Long lastRentPaidTimestamp) {
         RentedNode rentedNode = new RentedNode(
+            new TrackedNode(
                 someKey,
                 operationType,
                 loadsContractCode
+            )
         );
         rentedNode.setStorageRentData(nodeSize, lastRentPaidTimestamp);
         return rentedNode;
