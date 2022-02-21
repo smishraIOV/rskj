@@ -7,7 +7,6 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.ethereum.core.Transaction;
 import org.ethereum.core.TransactionExecutor;
 import org.ethereum.util.ByteUtil;
-import org.ethereum.vm.program.ProgramResult;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
@@ -85,16 +84,6 @@ public class StorageRentDSLTests {
         checkStorageRent(world,"tx07", 1, rentedNodesBalanceOfAcc2, 0);
     }
 
-    private void checkStorageRent(World world, String txName, long paidRent, long rentedNodesCount, long mismatches) {
-        TransactionExecutor transactionExecutor = world.getTransactionExecutor(txName);
-        StorageRentManager storageRentManager = transactionExecutor.getStorageRentManager();
-
-        assertTrue(transactionExecutor.isStorageRentEnabled());
-//        assertEquals(mismatches, storageRent.getMismatches().size());
-        assertEquals(rentedNodesCount, storageRentManager.getRentedNodes().size());
-        assertEquals(paidRent, storageRentManager.getPaidRent());
-    }
-
     /**
      * Contract deploy
      * */
@@ -107,8 +96,64 @@ public class StorageRentDSLTests {
 
         assertTrue(transactionExecutor.isStorageRentEnabled());
         checkStorageRent(world, "tx01", 1, 8, 0);
-//        assertEquals(9, result.getRentedNodes().size()); // todo(fedejinich) why?
-//        assertEquals(1, result.getPaidRent());
+    }
+
+    /**
+     * Executes a transaction with an internal transaction that is going to fail, but the main transaction succeeds
+     *
+     * It should
+     * - Pay storage rent of the main transaction +
+     * - 25% of the internal transaction
+     *
+     * todo(fedejinich) check that internal transactions nodes are excluded from the real storage rent manager
+     *   1. set a storage cell to a value and update timestamp
+     *   2. try to set the same storage cell to another value, this time it's going to fail
+     *   3. rented nodes from 1 & 2 should be the same but one transaction should exclude them from storage rent payment & charge 25%
+     * */
+    @Test
+    public void internalTransactionFailsButOverallEndsOk() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_handled_fail.txt");
+
+//      checkStorageRent(world, "", 1, 1, 1);
+        // todo(fedejinich) check that contract C doesn't commits state changes and doesn't updates its timestamp
+    }
+
+    /**
+     * Executes a transaction with nested internal transactions, the last one fails (unhandled) and makes the whole execution fail
+     *
+     * It should
+     * - Pay the 25% of storage rent for each internal transaction +
+     * - Pay 25% of storage rent of the main transaction
+     * */
+    @Test
+    public void internalTransactionUnhandledFail() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_unhandled_fail.txt");
+        // todo(fedejinich) currently failing because revert() clears rentedNodes list
+        //   still need to support reverts
+    }
+
+    /**
+     * Executes a transaction with nested internal transactions, they all end up ok but the main transaction fails
+     *
+     * It should pay 25% of the storage rent
+     * */
+    @Test
+    public void internalTransactionsSucceedsButOverallFails() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_succeeds_overall_fail.txt");
+        // todo(fedejinich) currently failing because revert() clears rentedNodes list
+        //   still need to support reverts
+    }
+
+    /**
+     * Executes a transaction with nested internal transactions, they all end up ok and the main transactions succeeds
+     *
+     * It should
+     * - Pay storage rent for each internal transaction +
+     * - Pay storage rent for the main transaction
+     * */
+    @Test
+    public void internalTransactionsAndOverallSucceeds() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_succeeds_overall_succeeds.txt");
     }
 
     /**
@@ -139,51 +184,13 @@ public class StorageRentDSLTests {
         return ByteUtil.byteArrayToInt(accountBalance);
     }
 
-    /**
-     * Executes a transaction with an internal transaction that is going to fail, but the main transaction succeeds
-     *
-     * It should
-     * - Pay storage rent of the main transaction +
-     * - 25% of the internal transaction
-     *
-     * todo(fedejinich) check that internal transactions nodes are excluded from the real storage rent manager
-     * */
-    @Test
-    public void internalTransactionFailsButOverallEndsOk() {
-        throw new NotImplementedException("needs to be implemented");
-    }
+    private void checkStorageRent(World world, String txName, long paidRent, long rentedNodesCount, long mismatches) {
+        TransactionExecutor transactionExecutor = world.getTransactionExecutor(txName);
+        StorageRentManager storageRentManager = transactionExecutor.getStorageRentManager();
 
-    /**
-     * Executes a transaction with nested internal transactions, the last one fails (unhandled) and makes the whole execution fail
-     *
-     * It should
-     * - Pay the 25% of storage rent for each internal transaction +
-     * - Pay 25% of storage rent of the main transaction
-     * */
-    @Test
-    public void internalTransactionUnhandledFail() {
-        throw new NotImplementedException("needs to be implemented");
-    }
-
-    /**
-     * Executes a transaction with nested internal transactions, they all end up ok but the main transaction fails
-     *
-     * It should pay 25% of the storage rent
-     * */
-    @Test
-    public void internalTransactionsSucceedsButOverallFails() {
-        throw new NotImplementedException("needs to be implemented");
-    }
-
-    /**
-     * Executes a transaction with nested internal transactions, they all end up ok and the main transactions succeeds
-     *
-     * It should
-     * - Pay storage rent for each internal transaction +
-     * - Pay storage rent for the main transaction
-     * */
-    @Test
-    public void internalTransactionsAndOverallSucceeds() {
-        throw new NotImplementedException("needs to be implemented");
+        assertTrue(transactionExecutor.isStorageRentEnabled());
+//        assertEquals(mismatches, storageRent.getMismatches().size());
+        assertEquals(rentedNodesCount, storageRentManager.getRentedNodes().size());
+        assertEquals(paidRent, storageRentManager.getPaidRent());
     }
 }

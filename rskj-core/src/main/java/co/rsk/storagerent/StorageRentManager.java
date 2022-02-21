@@ -38,6 +38,8 @@ public class StorageRentManager {
             node.setStorageRentData(storageRentData.get("nodeSize"), storageRentData.get("lastRentPaidTimestamp"));
         });
 
+        // todo(fedejinich) should i add a check for rented nodes > 0?
+
         long cumulativeRent = rentedNodes.stream()
                 .map(v -> v.payableRent(executionBlockTimestamp))
                 .reduce(GasCost::add)

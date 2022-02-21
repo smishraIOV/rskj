@@ -28,6 +28,7 @@ import co.rsk.metrics.profilers.ProfilerFactory;
 import co.rsk.panic.PanicProcessor;
 import co.rsk.rpc.modules.trace.ProgramSubtrace;
 import co.rsk.storagerent.StorageRentManager;
+import co.rsk.util.HexUtils;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.config.Constants;
 import org.ethereum.config.blockchain.upgrades.ActivationConfig;
@@ -614,6 +615,7 @@ public class TransactionExecutor {
 
     @VisibleForTesting
     public boolean isStorageRentEnabled() {
+        // todo(fedejinich) should i add a check for remasc transaction?
         return activations.isActive(RSKIP240) &&
                 !isEmpty(tx.getData()) &&
                 GasCost.toGas(tx.getGasLimit()) > GasCost.TRANSACTION;
