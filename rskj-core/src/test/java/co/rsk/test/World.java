@@ -36,7 +36,9 @@ import co.rsk.net.sync.SyncConfiguration;
 import co.rsk.peg.BridgeSupportFactory;
 import co.rsk.peg.BtcBlockStoreWithCache.Factory;
 import co.rsk.peg.RepositoryBtcBlockStoreWithCache;
+import co.rsk.storagerent.StorageRentManager;
 import co.rsk.test.builders.BlockChainBuilder;
+import co.rsk.test.dsl.BlockExecutorDSL;
 import co.rsk.test.dsl.DslParser;
 import co.rsk.test.dsl.DslProcessorException;
 import co.rsk.test.dsl.WorldDslProcessor;
@@ -61,7 +63,7 @@ public class World {
     private RskSystemProperties config;
     private BlockChainImpl blockChain;
     private NodeBlockProcessor blockProcessor;
-    private BlockExecutor blockExecutor;
+    private BlockExecutorDSL blockExecutor;
     private Map<String, Block> blocks = new HashMap<>();
     private Map<String, Account> accounts = new HashMap<>();
     private Map<String, Transaction> transactions = new HashMap<>();
@@ -166,7 +168,7 @@ public class World {
                 btcBlockStoreFactory, config.getNetworkConstants().getBridgeConstants(), config.getActivationConfig());
 
         if (this.blockExecutor == null) {
-            this.blockExecutor = new BlockExecutor(
+            this.blockExecutor = new BlockExecutorDSL(
                     config.getActivationConfig(),
                     new RepositoryLocator(getTrieStore(), stateRootHandler),
                     new TransactionExecutorFactory(
@@ -263,4 +265,15 @@ public class World {
         return this.receiptStore;
     }
 
+    public TransactionExecutor getTransactionExecutor(String txName) {
+        String txHash = getTransactionByName(txName)
+                .getHash()
+                .toHexString();
+
+        return this.blockExecutor.getTransactionExecutors().get(txHash);
+    }
+
+    public StorageRentManager getStorageRentManager(String txName) {
+        return getTransactionExecutor(txName).getStorageRentManager();
+    }
 }
