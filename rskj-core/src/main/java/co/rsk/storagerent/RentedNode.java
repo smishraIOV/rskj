@@ -1,5 +1,6 @@
 package co.rsk.storagerent;
 
+import co.rsk.trie.Trie;
 import org.ethereum.db.TrackedNode;
 
 import static co.rsk.storagerent.StorageRentComputation.*;
@@ -73,7 +74,12 @@ public class RentedNode extends TrackedNode {
     }
 
     private long duration(long currentBlockTimsetamp) {
+        if(this.getLastRentPaidTimestamp() == Trie.NO_RENT_TIMESTAMP) {
+            return 0; // todo(fedejinich) what is the duration for new nodes or old nodes (< Hop)?
+        }
+
         // todo(fedejinich) is this the right way to calculate the duration?
+        // todo(fedejinch) checkout oveflows
         return currentBlockTimsetamp - this.getLastRentPaidTimestamp();
     }
 
