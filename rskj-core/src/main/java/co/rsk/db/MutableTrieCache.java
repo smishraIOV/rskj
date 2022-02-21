@@ -44,6 +44,8 @@ public class MutableTrieCache implements MutableTrie {
     // null value means the element has been removed.
     private final Map<ByteArrayWrapper, Map<ByteArrayWrapper, byte[]>> cache;
 
+    private final Map<ByteArrayWrapper, Long> cacheTimestamps;
+
     // this logs recursive delete operations to be performed at commit time
     private final Set<ByteArrayWrapper> deleteRecursiveLog;
 
@@ -51,6 +53,7 @@ public class MutableTrieCache implements MutableTrie {
         trie = parentTrie;
         cache = new HashMap<>();
         deleteRecursiveLog = new HashSet<>();
+        cacheTimestamps = new HashMap<>();
     }
 
     @Override
@@ -184,9 +187,13 @@ public class MutableTrieCache implements MutableTrie {
                 accountData.forEach((realKey, value) -> this.trie.put(realKey, value));
             }
         });
-
+        cacheTimestamps.forEach((key, timestamp) -> {
+            TrieKeySlice key1 = TrieKeySlice.fromKey(key.getData()); // todo(fedejinich) this can be improved
+            this.trie.updateLastRentPaidTimestamp(key1, timestamp);
+        });
         deleteRecursiveLog.clear();
         cache.clear();
+        cacheTimestamps.clear();
     }
 
     @Override
@@ -199,6 +206,7 @@ public class MutableTrieCache implements MutableTrie {
     public void rollback() {
         cache.clear();
         deleteRecursiveLog.clear();
+        cacheTimestamps.clear();
     }
 
     @Override
@@ -244,8 +252,8 @@ public class MutableTrieCache implements MutableTrie {
 
     @Override
     public void updateLastRentPaidTimestamp(TrieKeySlice key, long updatedTimestamp) {
-        // todo(fedejinich) I'm not using any cache
-        this.trie.updateLastRentPaidTimestamp(key, updatedTimestamp);
+        ByteArrayWrapper key1 = new ByteArrayWrapper(key.encode()); // todo(fedejinich) this can be imporved
+        this.cacheTimestamps.put(key1, updatedTimestamp);
     }
 
     @Override
@@ -256,7 +264,6 @@ public class MutableTrieCache implements MutableTrie {
 
     @Override
     public long getNodeSize() {
-        // todo(fedejinich) I'm not using any cache
         return this.trie.getNodeSize();
     }
 
