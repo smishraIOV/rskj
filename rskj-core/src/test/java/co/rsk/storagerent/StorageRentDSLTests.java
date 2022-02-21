@@ -18,7 +18,7 @@ import static org.junit.Assert.*;
 /**
  * This is the grey box testing of the StorageRent feature (RSKIP240)
  * */
-public class StorageRentManagerDSLTests {
+public class StorageRentDSLTests {
 
     /**
      * Executes a simple value transfer,
@@ -26,7 +26,7 @@ public class StorageRentManagerDSLTests {
      * */
     @Test
     public void valueTransfer() throws FileNotFoundException, DslProcessorException {
-        World world = World.processedWorld("dsl/storagerent/storagerent.txt");
+        World world = World.processedWorld("dsl/storagerent/value_transfer.txt");
 
         TransactionExecutor transactionExecutor = world.getTransactionExecutor("tx01");
 
@@ -42,7 +42,7 @@ public class StorageRentManagerDSLTests {
      * */
     @Test
     public void tokenTransfer() throws FileNotFoundException, DslProcessorException { // todo(fedejinich) currently StorageRent payment it's disabled
-        World world = World.processedWorld("dsl/storagerent/storagerent.txt");
+        World world = World.processedWorld("dsl/storagerent/token_transfer.txt");
 
         /**
          * check token transfer
@@ -98,16 +98,17 @@ public class StorageRentManagerDSLTests {
     /**
      * Contract deploy
      * */
+    @Test
     public void contractDeploy() throws FileNotFoundException, DslProcessorException {
-        World world = World.processedWorld("dsl/storagerent/storagerent.txt");
+        World world = World.processedWorld("dsl/storagerent/contract_deploy.txt");
 
         // check contract deploy
-        TransactionExecutor transactionExecutor = world.getTransactionExecutor("tx02");
-        ProgramResult result = transactionExecutor.getResult();
+        TransactionExecutor transactionExecutor = world.getTransactionExecutor("tx01");
 
         assertTrue(transactionExecutor.isStorageRentEnabled());
-        assertEquals(9, result.getRentedNodes().size()); // todo(fedejinich) why?
-        assertEquals(1, result.getPaidRent());
+        checkStorageRent(world, "tx01", 1, 8, 0);
+//        assertEquals(9, result.getRentedNodes().size()); // todo(fedejinich) why?
+//        assertEquals(1, result.getPaidRent());
     }
 
     /**

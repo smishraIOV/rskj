@@ -18,6 +18,7 @@
 
 package org.ethereum.db;
 
+import co.rsk.RskContext;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.core.types.ints.Uint24;
@@ -29,6 +30,7 @@ import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
 import co.rsk.trie.TrieStore;
+import co.rsk.util.HexUtils;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
@@ -45,6 +47,8 @@ import static co.rsk.trie.Trie.NO_RENT_TIMESTAMP;
 import static org.ethereum.db.OperationType.*;
 
 public class MutableRepository implements Repository {
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger(MutableRepository.class);
+
     private static final Logger logger = LoggerFactory.getLogger("repository");
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final Keccak256 KECCAK_256_OF_EMPTY_ARRAY = new Keccak256(Keccak256Helper.keccak256(EMPTY_BYTE_ARRAY));
@@ -424,10 +428,17 @@ public class MutableRepository implements Repository {
         // the key exists in the cache, but is not present in the
         // trie before executing the transaction, therefore it's a new node
         boolean newNode = resultFromTrie.getTrie() == null && this.mutableTrie.get(key) != null;
+        long nodeSize = newNode ? this.mutableTrie.getValueLength(key).intValue() : resultFromTrie.getNodeSize();
+
+        // todo(fedejinich) nodes can be storage cell or account state, maybe we can return fixed sizes from this cases
+
+        String s = HexUtils.toJsonHex(key);
+        LOGGER_FEDE.error("key: {}, isNewNode: {}", s.substring(s.length() - 5), newNode);
+        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
 
         Map<String, Long> storageRentData = new HashMap<>();
-        // todo(fedejinich) is this ok? (getValueLength)
-        storageRentData.put("nodeSize", newNode ? this.mutableTrie.getValueLength(key).intValue() : resultFromTrie.getNodeSize());
+        // todo(fedejinich) is this ok? (getValueLength) this is not ok, it should be the length of the serialized node
+        storageRentData.put("nodeSize", nodeSize);
         storageRentData.put("lastRentPaidTimestamp", newNode ? NO_RENT_TIMESTAMP : resultFromTrie.getLastRentPaidTimestamp());
 
         return storageRentData;
