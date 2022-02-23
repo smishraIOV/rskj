@@ -57,6 +57,10 @@ public class MutableRepository implements Repository {
     protected final TrieKeyMapper trieKeyMapper;
     protected final MutableTrie mutableTrie;
 
+
+
+    // todo(fedejinich) ALL THIS MEMBERS MIGHT/SHOULD BE MOVED TO MutableRepositoryTracked
+
     // a set to track all the used trie-value-containing nodes in this repository (and its children repositories)
     protected final Set<TrackedNode> trackedNodes;
     // a list to track mismatched trie-keys
@@ -72,12 +76,13 @@ public class MutableRepository implements Repository {
         this(mutableTrie, null);
     }
 
+    // todo(fedejinich) default contructor will be MutableRepository(MutableTrie mutableTrie)
     public MutableRepository(MutableTrie mutableTrie, Repository parentRepository) {
         this.trieKeyMapper = new TrieKeyMapper();
         this.mutableTrie = mutableTrie;
-        this.parentRepository = parentRepository;
-        this.trackedNodes = new HashSet<>();
-        this.mismatches = new ArrayList<>();
+        this.parentRepository = parentRepository; // todo(fedejinich) this will be moved to MutableRepositoryTracked
+        this.trackedNodes = new HashSet<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
+        this.mismatches = new ArrayList<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
     }
 
     @Override

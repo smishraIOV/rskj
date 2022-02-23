@@ -5,21 +5,31 @@ import co.rsk.core.types.ints.Uint24;
 import co.rsk.crypto.Keccak256;
 import co.rsk.trie.MutableTrie;
 import com.google.common.annotations.VisibleForTesting;
+import org.ethereum.core.Repository;
 import org.ethereum.vm.DataWord;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Optional;
+import java.util.*;
 
 import static org.ethereum.db.OperationType.*;
 
 public class MutableRepositoryTracked extends MutableRepository {
-    public MutableRepositoryTracked(MutableTrie mutableTrie) {
+
+    // a set to track all the used trie-value-containing nodes in this repository (and its children repositories)
+    private final Set<TrackedNode> trackedNodes;
+    // a list to track mismatched trie-keys
+    private final List<ByteArrayWrapper> mismatches; // todo(fedejinich) this might be removed
+    // parent repository to commit tracked nodes
+    private final Repository parentRepository;
+
+    public MutableRepositoryTracked(MutableTrie mutableTrie, Repository parentRepository) {
         super(mutableTrie);
+        this.parentRepository = parentRepository;
+        this.trackedNodes = new HashSet<>();
+        this.mismatches = new ArrayList<>();
     }
 
     protected void internalPut(byte[] key, byte[] value) {
-        mutableTrie.put(key, value);
+        super.internalPut(key, value);
         if(value != null) { // there's no need to track if it's a delete operation
             trackNode(key, WRITE_OPERATION);
         }
@@ -27,7 +37,7 @@ public class MutableRepositoryTracked extends MutableRepository {
     }
 
     protected byte[] internalGet(byte[] key) {
-        byte[] value = mutableTrie.get(key);
+        byte[] value = super.internalGet(key);
 
         if(value != null) {
             trackNode(key, READ_OPERATION);
@@ -39,7 +49,7 @@ public class MutableRepositoryTracked extends MutableRepository {
     }
 
     protected Optional<Keccak256> internalGetValueHash(byte[] key) {
-        Optional<Keccak256> valueHash = mutableTrie.getValueHash(key);
+        Optional<Keccak256> valueHash = super.internalGetValueHash(key);
 
         if(valueHash.isPresent()) {
             trackNode(key, READ_OPERATION);
@@ -51,7 +61,7 @@ public class MutableRepositoryTracked extends MutableRepository {
     }
 
     protected Uint24 internalGetValueLength(byte[] key) {
-        Uint24 valueLength = mutableTrie.getValueLength(key);
+        Uint24 valueLength = super.internalGetValueLength(key);
 
         if(valueLength != Uint24.ZERO) {
             trackNode(key, READ_OPERATION);
@@ -63,11 +73,9 @@ public class MutableRepositoryTracked extends MutableRepository {
     }
 
     protected Iterator<DataWord> internalGetStorageKeys(RskAddress addr) {
-        // this method has been created to encapsulate mutableTrie.getStorageKeys(),
-        // and adds tracking logic for storage rent
-        Iterator<DataWord> storageKeys = mutableTrie.getStorageKeys(addr);
-        byte[] accountStoragePrefixKey = trieKeyMapper.getAccountStoragePrefixKey(addr); // todo(fedejinich) is this ok ?
+        Iterator<DataWord> storageKeys = super.internalGetStorageKeys(addr);
 
+        byte[] accountStoragePrefixKey = trieKeyMapper.getAccountStoragePrefixKey(addr); // todo(fedejinich) is this ok ?
         if(!storageKeys.equals(Collections.emptyIterator())) { // todo(fedejinich) is this ok?
             trackNode(accountStoragePrefixKey, READ_OPERATION);
         } else {
@@ -85,7 +93,8 @@ public class MutableRepositoryTracked extends MutableRepository {
         } else {
             trackMismatch(key);
         }
-        mutableTrie.deleteRecursive(key);
+
+        super.internalDeleteRecursive(key);
     }
 
     /**
