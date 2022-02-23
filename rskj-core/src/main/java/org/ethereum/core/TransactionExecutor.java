@@ -91,7 +91,7 @@ public class TransactionExecutor {
 
     private TransactionReceipt receipt;
     private ProgramResult result = new ProgramResult();
-    private StorageRentManager storageRentManager = new StorageRentManager(new HashSet<>(), new ArrayList<>());
+    private StorageRentManager storageRentManager = new StorageRentManager();
     private final Block executionBlock;
 
     private VM vm;
