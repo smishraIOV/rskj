@@ -561,9 +561,9 @@ public class WorldDslProcessorTest {
         String txHash3 = world.getTransactionReceiptByName("tx03").getTransaction().getHash().toHexString();
 
         assertEquals(3, transactionExecutors.size());
-        assertTrue(transactionExecutors.containsKey(txHash1));
-        assertTrue(transactionExecutors.containsKey(txHash2));
-        assertTrue(transactionExecutors.containsKey(txHash3));
+        assertEquals(txHash1, transactionExecutors.get(txHash1).getReceipt().getTransaction().getHash().toHexString());
+        assertEquals(txHash2, transactionExecutors.get(txHash2).getReceipt().getTransaction().getHash().toHexString());
+        assertEquals(txHash3, transactionExecutors.get(txHash3).getReceipt().getTransaction().getHash().toHexString());
     }
 
     @Test

@@ -20,6 +20,10 @@
 package co.rsk.storagerent;
 
 
+// todo(fedejinich) this class can be moved into StorageRent
+
+import co.rsk.trie.Trie;
+
 /**
  * Rent computation util according to the RSKIP240
  * https://github.com/rsksmart/RSKIPs/blob/master/IPs/RSKIP240.md
@@ -65,6 +69,7 @@ public class StorageRentComputation {
         validateArgumentsRentDue(nodeSize, duration);
         long nodeSizeWithOverhead = nodeSize + STORAGE_OVERHEAD;
 
+        // todo(fedejinich) check time units, result is always zero
         Double result = Math.floor(Double.valueOf(nodeSizeWithOverhead) * Double.valueOf(duration) * RENTAL_RATE);
 
         return result.longValue();
@@ -88,6 +93,10 @@ public class StorageRentComputation {
         validateArgumentsComputeTimestamp(nodeSize, rentDue, lastPaidTimestamp, currentBlockTimestamp,
                 rentCap, rentThreshold);
 
+        if(lastPaidTimestamp == Trie.NO_RENT_TIMESTAMP) {
+            return currentBlockTimestamp;
+        }
+
         if (rentDue <= rentThreshold) {
             return lastPaidTimestamp;
         }
@@ -106,7 +115,7 @@ public class StorageRentComputation {
                                                           long rentThreshold) {
         validPositiveValue(nodeSize, "nodeSize must be positive");
         validPositiveValue(rentDue, "rentDue must be positive");
-        validPositiveValue(lastPaidTimestamp, "lastPaidTime must be positive");
+//        validPositiveValue(lastPaidTimestamp, "lastPaidTime must be positive"); // todo(fedejinich) not always. new created nodes or nodes < Hop contains -1
         validPositiveValue(currentBlockTimestamp, "currentBlockTimestamp must be positive");
         validPositiveValue(rentCap, "rentCap must be positive");
         validPositiveValue(rentThreshold, "rentThreshold must be positive");

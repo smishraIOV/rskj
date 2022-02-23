@@ -18,19 +18,20 @@
 
 package org.ethereum.db;
 
+import co.rsk.RskContext;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.core.types.ints.Uint24;
 import co.rsk.crypto.Keccak256;
 import co.rsk.db.MutableTrieCache;
 import co.rsk.db.MutableTrieImpl;
-import co.rsk.storagerent.StorageRentManager;
 import co.rsk.storagerent.RentedNode;
-import co.rsk.storagerent.RentedNode.OperationType;
 import co.rsk.trie.MutableTrie;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieKeySlice;
 import co.rsk.trie.TrieStore;
+import co.rsk.util.HexUtils;
+import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.core.AccountState;
 import org.ethereum.core.Repository;
 import org.ethereum.crypto.Keccak256Helper;
@@ -42,28 +43,41 @@ import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
 
-import static co.rsk.storagerent.RentedNode.OperationType.READ_OPERATION;
-import static co.rsk.storagerent.RentedNode.OperationType.WRITE_OPERATION;
+import static co.rsk.trie.Trie.NO_RENT_TIMESTAMP;
+import static org.ethereum.db.OperationType.*;
 
 public class MutableRepository implements Repository {
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger(MutableRepository.class);
+
     private static final Logger logger = LoggerFactory.getLogger("repository");
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     public static final Keccak256 KECCAK_256_OF_EMPTY_ARRAY = new Keccak256(Keccak256Helper.keccak256(EMPTY_BYTE_ARRAY));
     private static final byte[] ONE_BYTE_ARRAY = new byte[] { 0x01 };
 
-    private final TrieKeyMapper trieKeyMapper;
-    private final MutableTrie mutableTrie;
+    protected final TrieKeyMapper trieKeyMapper;
+    protected final MutableTrie mutableTrie;
 
-    private StorageRentManager storageRentManager; // the real storage rent manager, used to track nodes and pay storage rent
-    private StorageRentManager temporaryStorageRentManager; // only used to track nodes in temporary repositories
+    // a set to track all the used trie-value-containing nodes in this repository (and its children repositories)
+    protected final Set<TrackedNode> trackedNodes;
+    // a list to track mismatched trie-keys
+    protected final List<ByteArrayWrapper> mismatches; // todo(fedejinich) this might be removed
+    // parent repository to commit tracked nodes
+    protected final Repository parentRepository;
 
     public MutableRepository(TrieStore trieStore, Trie trie) {
         this(new MutableTrieImpl(trieStore, trie));
     }
 
     public MutableRepository(MutableTrie mutableTrie) {
+        this(mutableTrie, null);
+    }
+
+    public MutableRepository(MutableTrie mutableTrie, Repository parentRepository) {
         this.trieKeyMapper = new TrieKeyMapper();
         this.mutableTrie = mutableTrie;
+        this.parentRepository = parentRepository;
+        this.trackedNodes = new HashSet<>();
+        this.mismatches = new ArrayList<>();
     }
 
     @Override
@@ -105,7 +119,7 @@ public class MutableRepository implements Repository {
 
     @Override
     public synchronized void delete(RskAddress addr) {
-        mutableTrie.deleteRecursive(trieKeyMapper.getAccountKey(addr));
+        internalDeleteRecursive(trieKeyMapper.getAccountKey(addr));
     }
 
     @Override
@@ -324,36 +338,54 @@ public class MutableRepository implements Repository {
     // To start tracking, a new repository is created, with a MutableTrieCache in the middle
     @Override
     public synchronized Repository startTracking() {
-        MutableRepository repositoryWithCache = new MutableRepository(new MutableTrieCache(mutableTrie));
-        if(isStorageRentEnabled()) {
-            repositoryWithCache.initStorageRentManager(this.storageRentManager);
-
-            // creates new temporary rent manager to track nodes and then commit them into the real storageRentManager
-            this.temporaryStorageRentManager = new StorageRentManager(new HashMap<>());
-        }
-        return repositoryWithCache;
+        return new MutableRepository(new MutableTrieCache(this.mutableTrie), this);
     }
 
     @Override
     public void save() {
-        mutableTrie.save();
+        this.mutableTrie.save();
     }
 
     @Override
     public synchronized void commit() {
-        mutableTrie.commit();
-        if(isStorageRentEnabled() && useTemporaryStorageRentManger()) {
-            this.storageRentManager.commit(this.temporaryStorageRentManager);
+        this.mutableTrie.commit();
+
+        // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
+        if(this.parentRepository != null) {
+            this.parentRepository.mergeTrackedNodes(this.trackedNodes, this.mismatches);
         }
     }
 
     @Override
     public synchronized void rollback() {
-        mutableTrie.rollback();
-        // todo(fedejinich) ideally this should be part of a RepositoryWithCache
-        if(isStorageRentEnabled() && useTemporaryStorageRentManger()) {
-            this.temporaryStorageRentManager = new StorageRentManager(new HashMap<>());
-        }
+        this.mutableTrie.rollback();
+        this.trackedNodes.clear();
+        this.mismatches.clear();
+    }
+
+    @Override
+    public void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches) {
+        this.trackedNodes.addAll(trackedNodes);
+        this.mismatches.addAll(mismatches);
+    }
+
+    @Override
+    public Collection<RentedNode> getStorageRentNodes() {
+        Map<ByteArrayWrapper, RentedNode> rentedNodes = new HashMap<>();
+        this.trackedNodes.forEach(trackedNode -> {
+            ByteArrayWrapper key = new ByteArrayWrapper(trackedNode.getKey().getData());
+            RentedNode rentedNode = new RentedNode(trackedNode);
+            RentedNode containedNode = rentedNodes.get(key);
+            if(containedNode != null) {
+                if(containedNode.shouldBeReplaced(rentedNode)) {
+                    rentedNodes.put(key, rentedNode);
+                }
+            } else {
+                rentedNodes.put(key, rentedNode);
+            }
+        });
+
+        return rentedNodes.values();
     }
 
     @Override
@@ -381,31 +413,40 @@ public class MutableRepository implements Repository {
         return internalGet(trieKeyMapper.getAccountKey(addr));
     }
 
-    @Override
-    public void initStorageRentManager(StorageRentManager storageRentManager) {
-        this.storageRentManager = storageRentManager;
-    }
+    // todo(fedejinich) ideally all of the down content should be moved to MutableRepositoryTracking
 
     @Override
     public void updateLastRentPaidTimestamp(byte[] key, long updatedRentTimestamp) {
         // todo(fedejinich) I guess I can avoid TrieKeySlice.fromKey(key)
         this.mutableTrie.updateLastRentPaidTimestamp(TrieKeySlice.fromKey(key), updatedRentTimestamp);
     }
-
+    
     @Override
     public Map<String, Long> fetchStorageRentData(byte[] key) {
-        MutableTrie mutableTrie = this.mutableTrie.find(key);
+        MutableTrie resultFromTrie = this.mutableTrie.find(key);
+
+        // the key exists in the cache, but is not present in the
+        // trie before executing the transaction, therefore it's a new node
+        boolean newNode = resultFromTrie.getTrie() == null && this.mutableTrie.get(key) != null;
+        long nodeSize = newNode ? this.mutableTrie.getValueLength(key).intValue() : resultFromTrie.getNodeSize();
+
+        // todo(fedejinich) nodes can be storage cell or account state, maybe we can return fixed sizes from this cases
+
+        String s = HexUtils.toJsonHex(key);
+        LOGGER_FEDE.error("key: {}, isNewNode: {}", s.substring(s.length() - 5), newNode);
+        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
 
         Map<String, Long> storageRentData = new HashMap<>();
-        storageRentData.put("nodeSize", mutableTrie.getNodeSize());
-        storageRentData.put("lastRentPaidTimestamp", mutableTrie.getLastRentPaidTimestamp());
+        // todo(fedejinich) is this ok? (getValueLength) this is not ok, it should be the length of the serialized node
+        storageRentData.put("nodeSize", nodeSize);
+        storageRentData.put("lastRentPaidTimestamp", newNode ? NO_RENT_TIMESTAMP : resultFromTrie.getLastRentPaidTimestamp());
 
         return storageRentData;
     }
 
-    // Internal methods contains storage rent tracking
+    // Internal methods contains node tracking
 
-    private void internalPut(byte[] key, byte[] value) {
+    protected void internalPut(byte[] key, byte[] value) {
         mutableTrie.put(key, value);
         if(value != null) { // there's no need to track if it's a delete operation
             trackNode(key, WRITE_OPERATION);
@@ -413,7 +454,7 @@ public class MutableRepository implements Repository {
         // todo(fedejinich) there are no mismatches for put operations, right?
     }
 
-    private byte[] internalGet(byte[] key) {
+    protected byte[] internalGet(byte[] key) {
         byte[] value = mutableTrie.get(key);
 
         if(value != null) {
@@ -425,7 +466,7 @@ public class MutableRepository implements Repository {
         return value;
     }
 
-    private Optional<Keccak256> internalGetValueHash(byte[] key) {
+    protected Optional<Keccak256> internalGetValueHash(byte[] key) {
         Optional<Keccak256> valueHash = mutableTrie.getValueHash(key);
 
         if(valueHash.isPresent()) {
@@ -437,7 +478,7 @@ public class MutableRepository implements Repository {
         return valueHash;
     }
 
-    private Uint24 internalGetValueLength(byte[] key) {
+    protected Uint24 internalGetValueLength(byte[] key) {
         Uint24 valueLength = mutableTrie.getValueLength(key);
 
         if(valueLength != Uint24.ZERO) {
@@ -449,7 +490,7 @@ public class MutableRepository implements Repository {
         return valueLength;
     }
 
-    private Iterator<DataWord> internalGetStorageKeys(RskAddress addr) {
+    protected Iterator<DataWord> internalGetStorageKeys(RskAddress addr) {
         // this method has been created to encapsulate mutableTrie.getStorageKeys(),
         // and adds tracking logic for storage rent
         Iterator<DataWord> storageKeys = mutableTrie.getStorageKeys(addr);
@@ -464,38 +505,32 @@ public class MutableRepository implements Repository {
         return storageKeys;
     }
 
+    protected void internalDeleteRecursive(byte[] key) {
+        // todo(fedejinich) if we remove mismatches we can avoid the overhead of find+delete
+        boolean exists = this.mutableTrie.find(key) != null;
+        if(exists) {
+            trackNode(key, DELETE_OPERATION);
+        } else {
+            trackMismatch(key);
+        }
+        mutableTrie.deleteRecursive(key);
+    }
+
     /**
-     * Tracks the relevant data of a value-containing node as RentNode (RSKIP240).
+     * Tracks the relevant data
      *
      * @param rawKey an existing trie key
      * @param operationType an operation type (read/write)
      * */
-    private void trackNode(byte[] rawKey, OperationType operationType) {
-        // TODO(fedejinich) wrap the null check with a new method (aka isStorageRentEnabled)
-        if(isStorageRentEnabled()) {
-            // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
-            ByteArrayWrapper key = new ByteArrayWrapper(rawKey);
-            RentedNode node = new RentedNode(key, operationType,false);
-
-            // temporary repositories (with MutableTrieCache) tracks nodes in a separate StorageRentManager
-            // and then commits them at MutableRepository.commit()
-            if(useTemporaryStorageRentManger()) {
-                this.temporaryStorageRentManager.trackNode(node);
-            } else {
-                this.storageRentManager.trackNode(node);
-            }
-        }
+    @VisibleForTesting
+    public void trackNode(byte[] rawKey, OperationType operationType) {
+        // todo(fedejinich) NEED TO DEFINE WHEN/HOW TRACK CONTRACT CODES OPERATIONS
+        this.trackedNodes.add(new TrackedNode(new ByteArrayWrapper(rawKey), operationType, false));
     }
 
-    private boolean useTemporaryStorageRentManger() {
-        return this.temporaryStorageRentManager != null;
-    }
-
-    private void trackMismatch(byte[] key) {
-        // TODO(fedejinich) wrap the null check with a new method (aka isStorageRentEnabled)
-        if(isStorageRentEnabled()) {
-            this.storageRentManager.trackMismatch(key);
-        }
+    @VisibleForTesting
+    public void trackMismatch(byte[] key) {
+        this.mismatches.add(new ByteArrayWrapper(key));
     }
 
     private boolean isStorageRentEnabled() {

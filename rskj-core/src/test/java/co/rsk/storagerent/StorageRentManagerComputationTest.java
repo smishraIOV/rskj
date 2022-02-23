@@ -25,7 +25,7 @@ import static co.rsk.storagerent.StorageRentComputation.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class StorageRentComputationTest {
+public class StorageRentManagerComputationTest {
 
     private static final long ONE_MONTH = 2_629_746; // expressed in seconds
 

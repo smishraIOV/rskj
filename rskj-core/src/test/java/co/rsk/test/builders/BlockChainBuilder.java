@@ -174,6 +174,7 @@ public class BlockChainBuilder {
         }
 
         GenesisLoaderImpl.loadGenesisInitalState(repository, genesis);
+        // todo(fedejinich) we are not creating a Repository witch cache, does this make sense? I guess no
         repository.commit();
         genesis.setStateRoot(repository.getRoot());
         genesis.flushRLP();

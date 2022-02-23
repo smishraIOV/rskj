@@ -2,14 +2,17 @@ package co.rsk.storagerent;
 
 import co.rsk.test.World;
 import co.rsk.test.dsl.DslProcessorException;
+import co.rsk.util.HexUtils;
 import org.apache.commons.lang3.NotImplementedException;
+import org.ethereum.core.Transaction;
 import org.ethereum.core.TransactionExecutor;
+import org.ethereum.util.ByteUtil;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static co.rsk.storagerent.StorageRentManager.NO_RENT_TO_PAY;
+import static org.junit.Assert.*;
 
 /**
  * This is the grey box testing of the StorageRent feature (RSKIP240)
@@ -22,17 +25,12 @@ public class StorageRentDSLTests {
      * */
     @Test
     public void valueTransfer() throws FileNotFoundException, DslProcessorException {
-        World world = World.processedWorld("dsl/storagerent.txt");
+        World world = World.processedWorld("dsl/storagerent/value_transfer.txt");
 
-        String txHash1 = world.getTransactionByName("tx01")
-                .getHash()
-                .toHexString();
-
-        TransactionExecutor transactionExecutor = world.getTransactionExecutor(txHash1);
-        StorageRentManager storageRentManager = transactionExecutor.getStorageRentManager();
+        TransactionExecutor transactionExecutor = world.getTransactionExecutor("tx01");
 
         assertFalse(transactionExecutor.isStorageRentEnabled());
-        assertEquals(0, storageRentManager.getRentedNodes().size());
+        assertEquals(NO_RENT_TO_PAY, transactionExecutor.getStorageRentManager().getPaidRent());
     }
 
     /**
@@ -42,8 +40,62 @@ public class StorageRentDSLTests {
      * - Pay storage rent
      * */
     @Test
-    public void tokenTransfer() {
-        throw new NotImplementedException("needs to be implemented");
+    public void tokenTransfer() throws FileNotFoundException, DslProcessorException { // todo(fedejinich) currently StorageRent payment it's disabled
+        World world = World.processedWorld("dsl/storagerent/token_transfer.txt");
+
+        /**
+         * check token transfer
+         * */
+
+        byte[] acc1Address = world.getAccountByName("acc1")
+                .getAddress()
+                .getBytes();
+        byte[] acc2Address = world.getAccountByName("acc2")
+                .getAddress()
+                .getBytes();
+
+        // checks the balanceOf acc1 BEFORE doing the token transfer
+        assertEquals(1000, balanceOf(world, acc1Address, "tx03"));
+        // check the balanceOf of acc2 BEFORE doing the token transfer
+        assertEquals(0, balanceOf(world,acc2Address, "tx04"));
+        // checks the balanceOf acc1 AFTER doing the token transfer
+        assertEquals(900, balanceOf(world, acc1Address,"tx06"));
+        // checks the balanceOf acc2 AFTER doing the token transfer
+        assertEquals(100, balanceOf(world, acc2Address,"tx07"));
+
+        /**
+         * storage rent checks
+         * */
+
+        // todo(fedejinich) need to accumulate rent to check real payments
+
+        long rentedNodesBalanceOfAcc1 = 3;
+        long rentedNodesBalanceOfAcc2 = 2;
+
+        // balanceOf
+        checkStorageRent(world,"tx03", 1, rentedNodesBalanceOfAcc1, 0);
+        checkStorageRent(world,"tx04", 1, rentedNodesBalanceOfAcc2, 0);
+
+        // transfer
+        checkStorageRent(world,"tx05", 1, 4, 0);
+
+        // balanceOf
+        checkStorageRent(world,"tx06", 1, rentedNodesBalanceOfAcc1, 0);
+        checkStorageRent(world,"tx07", 1, rentedNodesBalanceOfAcc2, 0);
+    }
+
+    /**
+     * Contract deploy
+     * */
+    @Test
+    public void contractDeploy() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/contract_deploy.txt");
+
+        // check contract deploy
+        TransactionExecutor transactionExecutor = world.getTransactionExecutor("tx01");
+
+        assertTrue(transactionExecutor.isStorageRentEnabled());
+        checkStorageRent(world, "tx01", 1, 8, 0);
     }
 
     /**
@@ -54,22 +106,30 @@ public class StorageRentDSLTests {
      * - 25% of the internal transaction
      *
      * todo(fedejinich) check that internal transactions nodes are excluded from the real storage rent manager
+     *   1. set a storage cell to a value and update timestamp
+     *   2. try to set the same storage cell to another value, this time it's going to fail
+     *   3. rented nodes from 1 & 2 should be the same but one transaction should exclude them from storage rent payment & charge 25%
      * */
     @Test
-    public void internalTransactionFailsButOverallEndsOk() {
-        throw new NotImplementedException("needs to be implemented");
+    public void internalTransactionFailsButOverallEndsOk() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_handled_fail.txt");
+
+//      checkStorageRent(world, "", 1, 1, 1);
+        // todo(fedejinich) check that contract C doesn't commits state changes and doesn't updates its timestamp
     }
 
     /**
-     * Executes a transaction with nested internal transactions, the last one fails and makes the whole execution fail
+     * Executes a transaction with nested internal transactions, the last one fails (unhandled) and makes the whole execution fail
      *
      * It should
      * - Pay the 25% of storage rent for each internal transaction +
      * - Pay 25% of storage rent of the main transaction
      * */
     @Test
-    public void internalTransactionUnhandledFail() {
-        throw new NotImplementedException("needs to be implemented");
+    public void internalTransactionUnhandledFail() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_unhandled_fail.txt");
+        // todo(fedejinich) currently failing because revert() clears rentedNodes list
+        //   still need to support reverts
     }
 
     /**
@@ -78,8 +138,10 @@ public class StorageRentDSLTests {
      * It should pay 25% of the storage rent
      * */
     @Test
-    public void internalTransactionsSucceedsButOverallFails() {
-        throw new NotImplementedException("needs to be implemented");
+    public void internalTransactionsSucceedsButOverallFails() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_succeeds_overall_fail.txt");
+        // todo(fedejinich) currently failing because revert() clears rentedNodes list
+        //   still need to support reverts
     }
 
     /**
@@ -90,7 +152,45 @@ public class StorageRentDSLTests {
      * - Pay storage rent for the main transaction
      * */
     @Test
-    public void internalTransactionsAndOverallSucceeds() {
-        throw new NotImplementedException("needs to be implemented");
+    public void internalTransactionsAndOverallSucceeds() throws FileNotFoundException, DslProcessorException {
+        World world = World.processedWorld("dsl/storagerent/nested_call_succeeds_overall_succeeds.txt");
+    }
+
+    /**
+     * Returns the token balance of an account given a txName.
+     * @param world a world
+     * @param address address to check balanceOf
+     * @param balanceOfTransaction a transaction name corresponding to a "balanceOf" transaction
+     * */
+    private int balanceOf(World world, byte[] address, String balanceOfTransaction) {
+        Transaction transactionByName = world.getTransactionByName(balanceOfTransaction);
+
+        String balanceOf = "70a08231"; // keccak("balanceOf(address)")
+
+        // UNFORMATED DATA is encoded by two hex digits per byte
+        String padding = "000000000000000000000000"; // padding.size = 24 (12 * 2)
+        String addressString = HexUtils.toJsonHex(address).substring(2); // address.size = 40 (20 * 2)
+
+        String data = HexUtils.toJsonHex(transactionByName.getData()).substring(2);
+
+        // check querying the right address. UNFORMATTED DATA
+        assertEquals(balanceOf + padding + addressString, data);
+
+        // get balance
+        byte[] accountBalance = world.getTransactionExecutor(balanceOfTransaction)
+                .getResult()
+                .getHReturn();
+
+        return ByteUtil.byteArrayToInt(accountBalance);
+    }
+
+    private void checkStorageRent(World world, String txName, long paidRent, long rentedNodesCount, long mismatches) {
+        TransactionExecutor transactionExecutor = world.getTransactionExecutor(txName);
+        StorageRentManager storageRentManager = transactionExecutor.getStorageRentManager();
+
+        assertTrue(transactionExecutor.isStorageRentEnabled());
+//        assertEquals(mismatches, storageRent.getMismatches().size());
+        assertEquals(rentedNodesCount, storageRentManager.getRentedNodes().size());
+        assertEquals(paidRent, storageRentManager.getPaidRent());
     }
 }

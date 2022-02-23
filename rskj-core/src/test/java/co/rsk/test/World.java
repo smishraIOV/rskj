@@ -36,6 +36,7 @@ import co.rsk.net.sync.SyncConfiguration;
 import co.rsk.peg.BridgeSupportFactory;
 import co.rsk.peg.BtcBlockStoreWithCache.Factory;
 import co.rsk.peg.RepositoryBtcBlockStoreWithCache;
+import co.rsk.storagerent.StorageRentManager;
 import co.rsk.test.builders.BlockChainBuilder;
 import co.rsk.test.dsl.BlockExecutorDSL;
 import co.rsk.test.dsl.DslParser;
@@ -264,7 +265,15 @@ public class World {
         return this.receiptStore;
     }
 
-    public TransactionExecutor getTransactionExecutor(String txHash) {
+    public TransactionExecutor getTransactionExecutor(String txName) {
+        String txHash = getTransactionByName(txName)
+                .getHash()
+                .toHexString();
+
         return this.blockExecutor.getTransactionExecutors().get(txHash);
+    }
+
+    public StorageRentManager getStorageRentManager(String txName) {
+        return getTransactionExecutor(txName).getStorageRentManager();
     }
 }

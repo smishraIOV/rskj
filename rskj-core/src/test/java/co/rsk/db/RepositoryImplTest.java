@@ -21,7 +21,6 @@ package co.rsk.db;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
-import co.rsk.storagerent.StorageRentManager;
 import co.rsk.trie.Trie;
 import co.rsk.trie.TrieHashTest;
 import co.rsk.trie.TrieKeySlice;
@@ -36,11 +35,11 @@ import org.junit.Test;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.Set;
 
-import static org.bouncycastle.util.encoders.Hex.decode;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -432,52 +431,45 @@ public class RepositoryImplTest {
 
     @Test
     public void internalGet_getCode_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
         repository.setupContract(accAddress1);
         repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getCode(accAddress1);
-        verify(storageRentManager, times(3)).trackNode(any());
+        verify(repository, times(3)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account
         repository.getCode(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGet_isContract_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
         repository.setupContract(accAddress1);
         repository.saveCode(accAddress1, "someCode".getBytes(StandardCharsets.UTF_8));
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.isContract(accAddress1);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shoudln't track on nonexistent account
         repository.isContract(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGet_getStorageBytes_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
@@ -486,29 +478,26 @@ public class RepositoryImplTest {
         repository.addStorageBytes(accAddress1, DataWord.ONE,
                 "something".getBytes(StandardCharsets.UTF_8));
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getStorageBytes(accAddress1, DataWord.ONE);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent storage key
         repository.getStorageBytes(accAddress1, DataWord.ZERO);
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account
         repository.getStorageBytes(randomAccountAddress(), DataWord.ONE);
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
 
     }
 
     @Test
     public void internalGet_getStorageValue_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
@@ -517,28 +506,25 @@ public class RepositoryImplTest {
         repository.addStorageBytes(accAddress1, DataWord.ONE,
                 "something".getBytes(StandardCharsets.UTF_8));
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getStorageValue(accAddress1, DataWord.ONE);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent storage key
         repository.getStorageValue(accAddress1, DataWord.valueOf(2));
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account
         repository.getStorageValue(randomAccountAddress(), DataWord.ONE);
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGet_getAccountState_shouldTriggerNodeTrackingIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
@@ -547,133 +533,109 @@ public class RepositoryImplTest {
         repository.addStorageBytes(accAddress1, DataWord.ONE,
                 "something".getBytes(StandardCharsets.UTF_8));
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getAccountState(accAddress1);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account state
         repository.getAccountState(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalPut_setupContract_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
-
-        repository.initStorageRentManager(storageRentManager);
+        MutableRepository repository = createMutableRepositoryWithCache();
 
         repository.setupContract(randomAccountAddress());
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
     }
 
     @Test
     public void internalPut_saveCode_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
-        
-        repository.initStorageRentManager(storageRentManager);
+        MutableRepository repository = createMutableRepositoryWithCache();
 
         repository.saveCode(randomAccountAddress(), "something".getBytes(StandardCharsets.UTF_8));
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
     }
 
     @Test
     public void internalPut_addStorageBytes_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.addStorageBytes(accAddress1, DataWord.ONE, "something".getBytes(StandardCharsets.UTF_8));
         // there's one unnecessary track because there is test code in production
-        verify(storageRentManager, times(2)).trackNode(any());
+        verify(repository, times(2)).trackNode(any(), any());
     }
 
     @Test
     public void internalPut_updateAccountState_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.updateAccountState(accAddress1, new AccountState());
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
     }
 
     @Test
     public void internalGetValueHash_getCodeHashStandard_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getCodeHashStandard(accAddress1);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account state
         repository.getCodeHashStandard(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGetValueHash_getCodeHashNonStandard_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getCodeHashNonStandard(accAddress1);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account state
         repository.getCodeHashNonStandard(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGetValueLength_isExist_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.isExist(accAddress1);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account state
         repository.isExist(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGetValueLength_getCodeLength_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
         RskAddress accAddress2 = randomAccountAddress();
 
@@ -683,44 +645,39 @@ public class RepositoryImplTest {
 
         repository.createAccount(accAddress2);
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getCodeLength(accAddress1);
-        verify(storageRentManager, times(2)).trackNode(any());
+        verify(repository, times(2)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         repository.getCodeLength(accAddress2);
         // because it's an address that doesn't have any code
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account state
         repository.getCodeLength(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
     public void internalGetStorageKeys_getStorageKeys_shouldTrackNodesIfValueItsPresent() {
-        Repository repository = createRepositoryWithCache();
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
+        MutableRepository repository = createMutableRepositoryWithCache();
         RskAddress accAddress1 = randomAccountAddress();
 
         repository.createAccount(accAddress1);
         repository.setupContract(accAddress1);
         repository.saveCode(accAddress1, "something".getBytes(StandardCharsets.UTF_8));
 
-        repository.initStorageRentManager(storageRentManager);
-
         repository.getStorageKeys(accAddress1);
-        verify(storageRentManager, times(1)).trackNode(any());
+        verify(repository, times(1)).trackNode(any(), any());
 
-        storageRentManager = newRentManager(repository);
+        repository = createMutableRepositoryWithCache();
 
         // shouldn't track on nonexistent account state
         repository.getStorageKeys(randomAccountAddress());
-        verify(storageRentManager, times(0)).trackNode(any());
+        verify(repository, times(0)).trackNode(any(), any());
     }
 
     @Test
@@ -739,19 +696,16 @@ public class RepositoryImplTest {
                 .updateLastRentPaidTimestamp(TrieKeySlice.fromKey(key), 12);
     }
 
-    private StorageRentManager newRentManager(Repository repository) {
-        StorageRentManager storageRentManager = spy(new StorageRentManager(new HashMap<>()));
-        repository.initStorageRentManager(storageRentManager);
-
-        return storageRentManager;
-    }
-
     private static RskAddress randomAccountAddress() {
         byte[] bytes = new byte[20];
 
         new Random().nextBytes(bytes);
 
         return new RskAddress(bytes);
+    }
+
+    private MutableRepository createMutableRepositoryWithCache() {
+        return spy(new MutableRepository(new MutableTrieCache(new MutableTrieImpl(null, new Trie()))));
     }
 
     private static Repository createRepositoryWithCache() {
