@@ -155,7 +155,11 @@ public interface Repository extends RepositorySnapshot {
 
     Map<String, Long> fetchStorageRentData(byte[] key);
 
+    // todo(fedejinich) this methods will only be included in MutableRepositoryTracked
+
     void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches);
 
     Collection<RentedNode> getStorageRentNodes();
+
+    void addRolledBackNodes(Collection<TrackedNode> trackedNodes);
 }

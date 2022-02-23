@@ -18,7 +18,6 @@
 
 package org.ethereum.db;
 
-import co.rsk.RskContext;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.core.types.ints.Uint24;
@@ -65,6 +64,8 @@ public class MutableRepository implements Repository {
     protected final Set<TrackedNode> trackedNodes;
     // a list to track mismatched trie-keys
     protected final List<ByteArrayWrapper> mismatches; // todo(fedejinich) this might be removed
+    // a list of nodes tracked nodes that were rolled back (due to revert or OOG)
+    protected final List<TrackedNode> rolledBackNodes;
     // parent repository to commit tracked nodes
     protected final Repository parentRepository;
 
@@ -76,13 +77,14 @@ public class MutableRepository implements Repository {
         this(mutableTrie, null);
     }
 
-    // todo(fedejinich) default contructor will be MutableRepository(MutableTrie mutableTrie)
+    // todo(fedejinich) default constructor will be MutableRepository(MutableTrie mutableTrie)
     public MutableRepository(MutableTrie mutableTrie, Repository parentRepository) {
         this.trieKeyMapper = new TrieKeyMapper();
         this.mutableTrie = mutableTrie;
         this.parentRepository = parentRepository; // todo(fedejinich) this will be moved to MutableRepositoryTracked
         this.trackedNodes = new HashSet<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
         this.mismatches = new ArrayList<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
+        this.rolledBackNodes = new ArrayList<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
     }
 
     @Override
@@ -359,6 +361,7 @@ public class MutableRepository implements Repository {
         //  only repositories with caches should rollback/commit
         if(this.parentRepository != null) {
             this.parentRepository.mergeTrackedNodes(this.trackedNodes, this.mismatches);
+            this.parentRepository.addRolledBackNodes(this.rolledBackNodes);
         }
     }
 
@@ -369,8 +372,10 @@ public class MutableRepository implements Repository {
         // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
         //  only repositories with caches should rollback/commit
         if(parentRepository != null) {
+            this.parentRepository.addRolledBackNodes(this.trackedNodes);
             this.trackedNodes.clear();
             this.mismatches.clear();
+            this.rolledBackNodes.clear();
         }
     }
 
@@ -397,6 +402,11 @@ public class MutableRepository implements Repository {
         });
 
         return rentedNodes.values();
+    }
+
+    @Override
+    public void addRolledBackNodes(Collection<TrackedNode> trackedNodes) {
+        this.rolledBackNodes.addAll(trackedNodes);
     }
 
     @Override
