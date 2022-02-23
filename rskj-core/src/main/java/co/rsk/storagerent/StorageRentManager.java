@@ -5,7 +5,7 @@ import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,12 +14,17 @@ import java.util.Map;
  * */
 public class StorageRentManager {
     public static final long NO_RENT_TO_PAY = -1;
+    public static final long NO_ROLLBACK_YET = -1;
+
+    private final Collection<RentedNode> rentedNodes;
+    private final List<RentedNode> rolledBackNodes;
 
     private long paidRent = NO_RENT_TO_PAY;
-    private final Collection<RentedNode> rentedNodes;
+    private long rollbacksFees = NO_ROLLBACK_YET;
 
-    public StorageRentManager(Collection<RentedNode> storageRentNodes) {
+    public StorageRentManager(Collection<RentedNode> storageRentNodes, List<RentedNode> rolledBackNodes) {
         this.rentedNodes = storageRentNodes;
+        this.rolledBackNodes = rolledBackNodes;
     }
 
     /**
@@ -37,6 +42,13 @@ public class StorageRentManager {
 
             node.setStorageRentData(storageRentData.get("nodeSize"), storageRentData.get("lastRentPaidTimestamp"));
         });
+        // todo(fedejinich) duplicated code
+        // fetch relevant data to pay fees for rollbacks
+        rolledBackNodes.forEach(node -> {
+            Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
+
+            node.setStorageRentData(storageRentData.get("nodeSize"), storageRentData.get("lastRentPaidTimestamp"));
+        });
 
         // todo(fedejinich) should i add a check for rented nodes > 0?
 
@@ -45,7 +57,14 @@ public class StorageRentManager {
                 .reduce(GasCost::add)
                 .get(); // todo(fedejinich) this should always be present, should I throw an exception?
 
-        if(gas < cumulativeRent) {
+        long rollbacksFees = rolledBackNodes.isEmpty() ? 0 : rolledBackNodes.stream()
+                .map(v -> v.rollbackFee(executionBlockTimestamp))
+                .reduce(GasCost::add)
+                .get();
+
+        long totalRent = cumulativeRent + rollbacksFees;
+
+        if(gas < totalRent) {
             // todo(fedejinich) this is not the right way to throw an OOG
             throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
         }
@@ -54,13 +73,18 @@ public class StorageRentManager {
                 node.getKey().getData(),
                 node.updatedRentTimestamp(executionBlockTimestamp)));
 
-        this.paidRent = cumulativeRent;
+        this.paidRent = totalRent;
+        this.rollbacksFees = rollbacksFees;
 
-        return GasCost.subtract(gas, cumulativeRent);
+        return GasCost.subtract(gas, this.paidRent);
     }
 
     public long getPaidRent() {
         return paidRent;
+    }
+
+    public long getRollbacksFees() {
+        return this.rollbacksFees;
     }
 
     public Collection<RentedNode> getRentedNodes() {

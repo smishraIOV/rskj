@@ -92,5 +92,9 @@ public class RentedNode extends TrackedNode {
         return loadsContract ? RENT_CAP_CONTRACT_CODE : RENT_CAP;
     }
 
+    public long rollbackFee(long executionBlockTimestamp) {
+        return (long) (payableRent(executionBlockTimestamp) * 0.25); // todo(fedejinich) avoid casting?
+    }
+
     // todo(fedejinich) should I override equals & hashcode?
 }

@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static co.rsk.trie.Trie.NO_RENT_TIMESTAMP;
 import static org.ethereum.db.OperationType.*;
@@ -380,36 +381,6 @@ public class MutableRepository implements Repository {
     }
 
     @Override
-    public void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches) {
-        this.trackedNodes.addAll(trackedNodes);
-        this.mismatches.addAll(mismatches);
-    }
-
-    @Override
-    public Collection<RentedNode> getStorageRentNodes() {
-        Map<ByteArrayWrapper, RentedNode> rentedNodes = new HashMap<>();
-        this.trackedNodes.forEach(trackedNode -> {
-            ByteArrayWrapper key = new ByteArrayWrapper(trackedNode.getKey().getData());
-            RentedNode rentedNode = new RentedNode(trackedNode);
-            RentedNode containedNode = rentedNodes.get(key);
-            if(containedNode != null) {
-                if(containedNode.shouldBeReplaced(rentedNode)) {
-                    rentedNodes.put(key, rentedNode);
-                }
-            } else {
-                rentedNodes.put(key, rentedNode);
-            }
-        });
-
-        return rentedNodes.values();
-    }
-
-    @Override
-    public void addRolledBackNodes(Collection<TrackedNode> trackedNodes) {
-        this.rolledBackNodes.addAll(trackedNodes);
-    }
-
-    @Override
     public synchronized byte[] getRoot() {
         mutableTrie.save();
 
@@ -552,5 +523,40 @@ public class MutableRepository implements Repository {
     @VisibleForTesting
     public void trackMismatch(byte[] key) {
         this.mismatches.add(new ByteArrayWrapper(key));
+    }
+
+    @Override
+    public void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches) {
+        this.trackedNodes.addAll(trackedNodes);
+        this.mismatches.addAll(mismatches);
+    }
+
+    @Override
+    public Collection<RentedNode> getStorageRentNodes() {
+        Map<ByteArrayWrapper, RentedNode> rentedNodes = new HashMap<>();
+        this.trackedNodes.forEach(trackedNode -> {
+            ByteArrayWrapper key = new ByteArrayWrapper(trackedNode.getKey().getData());
+            RentedNode rentedNode = new RentedNode(trackedNode);
+            RentedNode containedNode = rentedNodes.get(key);
+            if(containedNode != null) {
+                if(containedNode.shouldBeReplaced(rentedNode)) {
+                    rentedNodes.put(key, rentedNode);
+                }
+            } else {
+                rentedNodes.put(key, rentedNode);
+            }
+        });
+
+        return rentedNodes.values();
+    }
+
+    @Override
+    public void addRolledBackNodes(Collection<TrackedNode> trackedNodes) {
+        this.rolledBackNodes.addAll(trackedNodes);
+    }
+
+    @Override
+    public List<RentedNode> getRolledBackNodes() {
+        return this.rolledBackNodes.stream().map(trackedNode -> new RentedNode(trackedNode)).collect(Collectors.toList());
     }
 }

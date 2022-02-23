@@ -28,7 +28,6 @@ import co.rsk.metrics.profilers.ProfilerFactory;
 import co.rsk.panic.PanicProcessor;
 import co.rsk.rpc.modules.trace.ProgramSubtrace;
 import co.rsk.storagerent.StorageRentManager;
-import co.rsk.util.HexUtils;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.config.Constants;
 import org.ethereum.config.blockchain.upgrades.ActivationConfig;
@@ -92,7 +91,7 @@ public class TransactionExecutor {
 
     private TransactionReceipt receipt;
     private ProgramResult result = new ProgramResult();
-    private StorageRentManager storageRentManager = new StorageRentManager(Collections.EMPTY_SET);
+    private StorageRentManager storageRentManager = new StorageRentManager(new HashSet<>(), new ArrayList<>());
     private final Block executionBlock;
 
     private VM vm;
@@ -514,7 +513,10 @@ public class TransactionExecutor {
         logger.trace("Finalize transaction {} {}", toBI(tx.getNonce()), tx.getHash());
 
         if(isStorageRentEnabled()) {
-            this.storageRentManager = new StorageRentManager(storageRentTrack().getStorageRentNodes());
+            this.storageRentManager = new StorageRentManager(
+                    storageRentTrack().getStorageRentNodes(),
+                    storageRentTrack().getRolledBackNodes()
+            );
 
             // pay storage rent
             gasLeftover = storageRentManager.pay(gasLeftover, executionBlock.getTimestamp(), storageRentTrack());

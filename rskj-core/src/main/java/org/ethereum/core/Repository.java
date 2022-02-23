@@ -161,5 +161,7 @@ public interface Repository extends RepositorySnapshot {
 
     Collection<RentedNode> getStorageRentNodes();
 
+    List<RentedNode> getRolledBackNodes();
+
     void addRolledBackNodes(Collection<TrackedNode> trackedNodes);
 }
