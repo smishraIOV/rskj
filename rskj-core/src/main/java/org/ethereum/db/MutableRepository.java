@@ -356,6 +356,7 @@ public class MutableRepository implements Repository {
         this.mutableTrie.commit();
 
         // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
+        //  only repositories with caches should rollback/commit
         if(this.parentRepository != null) {
             this.parentRepository.mergeTrackedNodes(this.trackedNodes, this.mismatches);
         }
@@ -364,8 +365,13 @@ public class MutableRepository implements Repository {
     @Override
     public synchronized void rollback() {
         this.mutableTrie.rollback();
-        this.trackedNodes.clear();
-        this.mismatches.clear();
+
+        // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
+        //  only repositories with caches should rollback/commit
+        if(parentRepository != null) {
+            this.trackedNodes.clear();
+            this.mismatches.clear();
+        }
     }
 
     @Override
