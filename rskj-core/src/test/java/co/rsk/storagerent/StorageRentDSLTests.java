@@ -3,7 +3,6 @@ package co.rsk.storagerent;
 import co.rsk.test.World;
 import co.rsk.test.dsl.DslProcessorException;
 import co.rsk.util.HexUtils;
-import org.apache.commons.lang3.NotImplementedException;
 import org.ethereum.core.Transaction;
 import org.ethereum.core.TransactionExecutor;
 import org.ethereum.util.ByteUtil;
@@ -73,15 +72,17 @@ public class StorageRentDSLTests {
         long rentedNodesBalanceOfAcc2 = 2;
 
         // balanceOf
-        checkStorageRent(world,"tx03", 1, rentedNodesBalanceOfAcc1, 0);
-        checkStorageRent(world,"tx04", 1, rentedNodesBalanceOfAcc2, 0);
+        checkStorageRent(world,"tx03", 1, 0, rentedNodesBalanceOfAcc1,
+                0, 0);
+        checkStorageRent(world,"tx04", 1, 0, rentedNodesBalanceOfAcc2,
+                0, 0);
 
         // transfer
-        checkStorageRent(world,"tx05", 1, 4, 0);
+        checkStorageRent(world,"tx05", 1, 0, 4, 0, 0);
 
         // balanceOf
-        checkStorageRent(world,"tx06", 1, rentedNodesBalanceOfAcc1, 0);
-        checkStorageRent(world,"tx07", 1, rentedNodesBalanceOfAcc2, 0);
+        checkStorageRent(world,"tx06", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx07", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
     }
 
     /**
@@ -95,7 +96,7 @@ public class StorageRentDSLTests {
         TransactionExecutor transactionExecutor = world.getTransactionExecutor("tx01");
 
         assertTrue(transactionExecutor.isStorageRentEnabled());
-        checkStorageRent(world, "tx01", 1, 8, 0);
+        checkStorageRent(world, "tx01", 1, 0, 8, 0, 0);
     }
 
     /**
@@ -154,6 +155,9 @@ public class StorageRentDSLTests {
     @Test
     public void internalTransactionsAndOverallSucceeds() throws FileNotFoundException, DslProcessorException {
         World world = World.processedWorld("dsl/storagerent/nested_call_succeeds_overall_succeeds.txt");
+
+
+        checkStorageRent(world, "tx04", 1, 0, 2, 0, 1);
     }
 
     /**
@@ -184,13 +188,16 @@ public class StorageRentDSLTests {
         return ByteUtil.byteArrayToInt(accountBalance);
     }
 
-    private void checkStorageRent(World world, String txName, long paidRent, long rentedNodesCount, long mismatches) {
+    private void checkStorageRent(World world, String txName, long paidRent, long rollbackRent, long rentedNodesCount,
+                                  long rollbackNodesCount, long mismatches) {
         TransactionExecutor transactionExecutor = world.getTransactionExecutor(txName);
         StorageRentManager storageRentManager = transactionExecutor.getStorageRentManager();
 
         assertTrue(transactionExecutor.isStorageRentEnabled());
 //        assertEquals(mismatches, storageRent.getMismatches().size());
         assertEquals(rentedNodesCount, storageRentManager.getRentedNodes().size());
+        assertEquals(rollbackNodesCount, storageRentManager.getRolledBackNodes());
         assertEquals(paidRent, storageRentManager.getPaidRent());
+        assertEquals(rollbackRent, storageRentManager.getRollbacksFees());
     }
 }

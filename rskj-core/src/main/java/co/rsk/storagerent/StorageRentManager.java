@@ -99,7 +99,7 @@ public class StorageRentManager {
 
     @VisibleForTesting
     public long getPaidRent() {
-        return paidRent;
+        return this.paidRent;
     }
 
     @VisibleForTesting
@@ -109,6 +109,11 @@ public class StorageRentManager {
 
     @VisibleForTesting
     public Collection<RentedNode> getRentedNodes() {
-        return rentedNodes;
+        return this.rentedNodes;
+    }
+
+    @VisibleForTesting
+    public List<RentedNode> getRolledBackNodes() {
+        return this.rolledBackNodes;
     }
 }
