@@ -47,7 +47,7 @@ import static co.rsk.trie.Trie.NO_RENT_TIMESTAMP;
 import static org.ethereum.db.OperationType.*;
 
 public class MutableRepository implements Repository {
-    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger(MutableRepository.class);
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger("fede");
 
     private static final Logger logger = LoggerFactory.getLogger("repository");
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
@@ -358,8 +358,6 @@ public class MutableRepository implements Repository {
     public synchronized void commit() {
         this.mutableTrie.commit();
 
-        // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
-        //  only repositories with caches should rollback/commit
         if(this.parentRepository != null) {
             this.parentRepository.mergeTrackedNodes(this.trackedNodes, this.mismatches);
             this.parentRepository.addRolledBackNodes(this.rolledBackNodes);
@@ -370,8 +368,6 @@ public class MutableRepository implements Repository {
     public synchronized void rollback() {
         this.mutableTrie.rollback();
 
-        // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
-        //  only repositories with caches should rollback/commit
         if(parentRepository != null) {
             this.parentRepository.addRolledBackNodes(this.trackedNodes);
             this.trackedNodes.clear();
@@ -418,6 +414,11 @@ public class MutableRepository implements Repository {
 //        MutableTrie resultFromTrie = this.mutableTrie.find(key);
         MutableTrie resultFromTrie = this.mutableTrie.find(key);
 
+        // todo(fedejinich) it should first try to find a key in the cache (most updated value) and then go to trie.
+//        long fetchedTimestamp = this.mutableTrie.fetchLastRentPaidTimestamp(key);
+        // todo(fedejinich) it should first try to find a node size in the cache (most updated value) and then go to trie.
+//        long fetchedSize = this.mutableTrie.fetchLastRentPaidTimestamp(key);
+
         // the key exists in the cache, but is not present in the
         // trie before executing the transaction, therefore it's a new node
         boolean newNode = resultFromTrie.getTrie() == null && this.mutableTrie.get(key) != null;
@@ -427,7 +428,7 @@ public class MutableRepository implements Repository {
 
         String s = HexUtils.toJsonHex(key);
         LOGGER_FEDE.error("key: {}, isNewNode: {}", s.substring(s.length() - 5), newNode);
-        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
+//        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
 
         Map<String, Long> storageRentData = new HashMap<>();
         // todo(fedejinich) is this ok? (getValueLength) this is not ok, it should be the length of the serialized node

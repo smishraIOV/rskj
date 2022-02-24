@@ -201,6 +201,6 @@ public class StorageRentDSLTests {
         assertEquals(rentedNodesCount, storageRentManager.getRentedNodes().size());
         assertEquals(rollbackNodesCount, storageRentManager.getRolledBackNodes());
         assertEquals(paidRent, storageRentManager.getPaidRent());
-        assertEquals(rollbackRent, storageRentManager.getRollbacksFees());
+        assertEquals(rollbackRent, storageRentManager.getRollbacksRent());
     }
 }

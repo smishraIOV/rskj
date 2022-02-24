@@ -1,7 +1,11 @@
 package co.rsk.storagerent;
 
 import co.rsk.trie.Trie;
+import co.rsk.util.HexUtils;
+import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.db.TrackedNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static co.rsk.storagerent.StorageRentComputation.*;
 import static org.ethereum.db.OperationType.READ_OPERATION;
@@ -12,6 +16,8 @@ import static org.ethereum.db.OperationType.WRITE_OPERATION;
  * It also returns the relevant information to pay the storage rent.
  * */
 public class RentedNode extends TrackedNode {
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger("fede");
+
     private Long nodeSize;
     private Long lastRentPaidTimestamp;
 
@@ -66,7 +72,8 @@ public class RentedNode extends TrackedNode {
         return nodeSize;
     }
 
-    private long getLastRentPaidTimestamp() {
+    @VisibleForTesting
+    public long getLastRentPaidTimestamp() {
         if(lastRentPaidTimestamp == null) {
             throw new IllegalStateException("no lastRentPaidTimestamp, initialize it by fetching storage rent data with the RentManager");
         }
@@ -74,13 +81,17 @@ public class RentedNode extends TrackedNode {
     }
 
     private long duration(long currentBlockTimsetamp) {
+        long duration = 0;
         if(this.getLastRentPaidTimestamp() == Trie.NO_RENT_TIMESTAMP) {
-            return 0; // todo(fedejinich) what is the duration for new nodes or old nodes (< Hop)?
+            LOGGER_FEDE.error("node: {}, duration: {}", printableKey(getKey().getData()), duration);
+            return duration; // todo(fedejinich) what is the duration for new nodes or old nodes (< Hop)?
         }
 
         // todo(fedejinich) is this the right way to calculate the duration?
         // todo(fedejinch) checkout oveflows
-        return currentBlockTimsetamp - this.getLastRentPaidTimestamp();
+        duration = currentBlockTimsetamp - this.getLastRentPaidTimestamp();
+        LOGGER_FEDE.error("node: {}, duration: {}", printableKey(getKey().getData()), duration);
+        return duration;
     }
 
     private long rentThreshold(boolean loadsContractCode) {
@@ -97,4 +108,9 @@ public class RentedNode extends TrackedNode {
     }
 
     // todo(fedejinich) should I override equals & hashcode?
+
+    private String printableKey(byte[] key) {
+        String s = HexUtils.toJsonHex(key);
+        return s.substring(s.length() - 5);
+    }
 }

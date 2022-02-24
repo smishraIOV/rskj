@@ -28,6 +28,7 @@ import co.rsk.metrics.profilers.ProfilerFactory;
 import co.rsk.panic.PanicProcessor;
 import co.rsk.rpc.modules.trace.ProgramSubtrace;
 import co.rsk.storagerent.StorageRentManager;
+import co.rsk.util.HexUtils;
 import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.config.Constants;
 import org.ethereum.config.blockchain.upgrades.ActivationConfig;
@@ -62,6 +63,7 @@ import static org.ethereum.util.ByteUtil.EMPTY_BYTE_ARRAY;
  * @since 19.12.2014
  */
 public class TransactionExecutor {
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger("fede");
 
     private static final Logger logger = LoggerFactory.getLogger("execute");
     private static final Profiler profiler = ProfilerFactory.getInstance();
@@ -141,6 +143,11 @@ public class TransactionExecutor {
      * @return true if the transaction is valid and executed, false if the transaction is invalid
      */
     public boolean executeTransaction() {
+        LOGGER_FEDE.error("-------------- EXECUTING TRANSACTION -------------- ");
+        String arg = HexUtils.toJsonHex(tx.getHash().getBytes());
+        LOGGER_FEDE.error("tx: {}", arg.substring(arg.length() - 5));
+        LOGGER_FEDE.error("STORAGE RENT ENABLED: {}", isStorageRentEnabled());
+
         if (!this.init()) {
             return false;
         }
