@@ -72,17 +72,20 @@ public class StorageRentDSLTests {
         long rentedNodesBalanceOfAcc2 = 2;
 
         // balanceOf
-        checkStorageRent(world,"tx03", 1, 0, rentedNodesBalanceOfAcc1,
-                0, 0);
-        checkStorageRent(world,"tx04", 1, 0, rentedNodesBalanceOfAcc2,
-                0, 0);
+        checkStorageRent(world,"tx03", 1, 0,
+                rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx04", 1, 0,
+                rentedNodesBalanceOfAcc2, 0, 0);
 
         // transfer
-        checkStorageRent(world,"tx05", 1, 0, 4, 0, 0);
+        checkStorageRent(world,"tx05", 1, 0,
+                4, 0, 0);
 
         // balanceOf
-        checkStorageRent(world,"tx06", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx07", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
+        checkStorageRent(world,"tx06", 1, 0,
+                rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx07", 1, 0,
+                rentedNodesBalanceOfAcc2, 0, 0);
     }
 
     /**

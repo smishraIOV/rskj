@@ -45,20 +45,12 @@ public class StorageRentManager {
         // fetch relevant data to pay fees for rollbacks
         fetchStorageRentData(repository, rolledBackNodes);
 
-        // todo(fedejinich) should i add a check for rented nodes > 0?
+        if(rentedNodes.isEmpty() && rolledBackNodes.isEmpty()) {
+            throw new RuntimeException("there should be rented nodes or rollback nodes");
+        }
 
         long payableRent = rentBy(this.rentedNodes, rentedNode -> rentedNode.payableRent(executionBlockTimestamp));
         long rollbacksRent = rentBy(this.rolledBackNodes, rentedNode -> rentedNode.rollbackFee(executionBlockTimestamp));
-
-//        long payableRent = this.rentedNodes.isEmpty() ? 0 : this.rentedNodes.stream()
-//                .map(v -> v.payableRent(executionBlockTimestamp))
-//                .reduce(GasCost::add)
-//                .get();
-
-//        long rollbacksRent = rolledBackNodes.isEmpty() ? 0 : rolledBackNodes.stream()
-//                .map(v -> v.rollbackFee(executionBlockTimestamp))
-//                .reduce(GasCost::add)
-//                .get();
 
         long totalRent = payableRent + rollbacksRent;
 
