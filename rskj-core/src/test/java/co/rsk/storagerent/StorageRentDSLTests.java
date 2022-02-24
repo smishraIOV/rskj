@@ -68,24 +68,19 @@ public class StorageRentDSLTests {
 
         // todo(fedejinich) need to accumulate rent to check real payments
 
-        long rentedNodesBalanceOfAcc1 = 3;
-        long rentedNodesBalanceOfAcc2 = 2;
+        long rentedNodesBalanceOfAcc1 = 3; // rented nodes at balanceOf(acc1)
+        long rentedNodesBalanceOfAcc2 = 2; // rented nodes at balanceOf(acc2)
 
         // balanceOf
-        checkStorageRent(world,"tx03", 1, 0,
-                rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx04", 1, 0,
-                rentedNodesBalanceOfAcc2, 0, 0);
+        checkStorageRent(world,"tx03", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx04", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
 
         // transfer
-        checkStorageRent(world,"tx05", 1, 0,
-                4, 0, 0);
+        checkStorageRent(world,"tx05", 1, 0, 4, 0, 0);
 
         // balanceOf
-        checkStorageRent(world,"tx06", 1, 0,
-                rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx07", 1, 0,
-                rentedNodesBalanceOfAcc2, 0, 0);
+        checkStorageRent(world,"tx06", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx07", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
     }
 
     /**
@@ -201,6 +196,6 @@ public class StorageRentDSLTests {
         assertEquals(rentedNodesCount, storageRentManager.getRentedNodes().size());
         assertEquals(rollbackNodesCount, storageRentManager.getRolledBackNodes());
         assertEquals(paidRent, storageRentManager.getPaidRent());
-        assertEquals(rollbackRent, storageRentManager.getRollbacksFees());
+        assertEquals(rollbackRent, storageRentManager.getRollbacksRent());
     }
 }
