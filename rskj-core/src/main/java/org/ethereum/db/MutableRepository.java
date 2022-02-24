@@ -415,6 +415,7 @@ public class MutableRepository implements Repository {
     
     @Override
     public Map<String, Long> fetchStorageRentData(byte[] key) {
+//        MutableTrie resultFromTrie = this.mutableTrie.find(key);
         MutableTrie resultFromTrie = this.mutableTrie.find(key);
 
         // the key exists in the cache, but is not present in the
@@ -498,14 +499,9 @@ public class MutableRepository implements Repository {
     }
 
     protected void internalDeleteRecursive(byte[] key) {
-        // todo(fedejinich) if we remove mismatches we can avoid the overhead of find+delete
-        boolean exists = this.mutableTrie.find(key) != null;
-        if(exists) {
-            trackNode(key, DELETE_OPERATION);
-        } else {
-            trackMismatch(key);
-        }
+        // todo(fedejinich) what happens for non existing keys? should trackMismatch?
         mutableTrie.deleteRecursive(key);
+        trackNode(key, DELETE_OPERATION);
     }
 
     /**

@@ -86,15 +86,9 @@ public class MutableRepositoryTracked extends MutableRepository {
     }
 
     protected void internalDeleteRecursive(byte[] key) {
-        // todo(fedejinich) if we remove mismatches we can avoid the overhead of find+delete
-        boolean exists = this.mutableTrie.find(key) != null;
-        if(exists) {
-            trackNode(key, DELETE_OPERATION);
-        } else {
-            trackMismatch(key);
-        }
-
+        // todo(fedejinich) what happens for non existing keys? should trackMismatch?
         super.internalDeleteRecursive(key);
+        trackNode(key, DELETE_OPERATION);
     }
 
     /**
