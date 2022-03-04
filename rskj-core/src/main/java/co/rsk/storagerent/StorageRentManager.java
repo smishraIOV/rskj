@@ -1,70 +1,148 @@
 package co.rsk.storagerent;
 
+import co.rsk.util.HexUtils;
+import com.google.common.annotations.VisibleForTesting;
 import org.ethereum.core.Repository;
 import org.ethereum.vm.GasCost;
 import org.ethereum.vm.program.Program;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 
 /**
- * Stateless class, useful for the StorageRent feature (RSKIP240)
+ * StorageRentManager, responsible for paying StorageRent (RSKIP240)
  * https://github.com/rsksmart/RSKIPs/blob/master/IPs/RSKIP240.md
  * */
 public class StorageRentManager {
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger("fede");
+
     public static final long NO_RENT_TO_PAY = -1;
+    public static final long NO_ROLLBACK_YET = -1;
+
+    private final Collection<RentedNode> rentedNodes;
+    private final List<RentedNode> rolledBackNodes;
 
     private long paidRent = NO_RENT_TO_PAY;
-    private final Collection<RentedNode> rentedNodes;
+    private long rollbacksRent = NO_ROLLBACK_YET;
 
-    public StorageRentManager(Collection<RentedNode> storageRentNodes) {
+    public StorageRentManager() {
+        this(new HashSet<>(), new ArrayList<>());
+    }
+
+    public StorageRentManager(Collection<RentedNode> storageRentNodes, List<RentedNode> rolledBackNodes) {
         this.rentedNodes = storageRentNodes;
+        this.rolledBackNodes = rolledBackNodes;
     }
 
     /**
-     * Pay storage rent
+     * Pay storage rent.
      *
-     * @param gas initial gas amount
+     * @param gasRemaining remaining gas amount to pay storage rent
      * @param executionBlockTimestamp execution block timestamp
      * @param repository repository to fetch the relevant data and to update the rent timestamps
-     * @return gas leftover
+     * @return new remaining gas
      * */
-    public long pay(long gas, long executionBlockTimestamp, Repository repository) {
+    public long pay(long gasRemaining, long executionBlockTimestamp, Repository repository) {
         // fetch relevant data to pay storage rent
-        rentedNodes.forEach(node -> {
-            Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
+        fetchStorageRentData(repository, rentedNodes);
+        // fetch relevant data to pay fees for rollbacks
+        fetchStorageRentData(repository, rolledBackNodes);
 
-            node.setStorageRentData(storageRentData.get("nodeSize"), storageRentData.get("lastRentPaidTimestamp"));
-        });
-
-        // todo(fedejinich) should i add a check for rented nodes > 0?
-
-        long cumulativeRent = rentedNodes.stream()
-                .map(v -> v.payableRent(executionBlockTimestamp))
-                .reduce(GasCost::add)
-                .get(); // todo(fedejinich) this should always be present, should I throw an exception?
-
-        if(gas < cumulativeRent) {
-            // todo(fedejinich) this is not the right way to throw an OOG
-            throw new Program.OutOfGasException("not enough gas to pay storage rent. gas: {}, gasNeeded: {}");
+        if(rentedNodes.isEmpty() && rolledBackNodes.isEmpty()) {
+            throw new RuntimeException("there should be rented nodes or rollback nodes");
         }
 
-        rentedNodes.forEach(node -> repository.updateLastRentPaidTimestamp(
+        long payableRent = rentBy(this.rentedNodes, rentedNode -> rentedNode.payableRent(executionBlockTimestamp));
+        long rollbacksRent = rentBy(this.rolledBackNodes, rentedNode -> rentedNode.rollbackFee(executionBlockTimestamp));
+
+        LOGGER_FEDE.error("payableRent: {}, rollbacksRent: {}", payableRent, rollbacksRent);
+
+        long totalRent = payableRent + rollbacksRent;
+
+        LOGGER_FEDE.error("totalRent: {}", totalRent);
+
+//        if(totalRent <= 0) {
+//            // todo(fedejinich) should throw the right exception
+//            throw new RuntimeException("totalRent should be positive");
+//        }
+
+        LOGGER_FEDE.error("gasRemaining({}) < totalRent({})", gasRemaining, totalRent);
+
+        if(gasRemaining < totalRent) {
+            // todo(fedejinich) this is not the right way to throw an OOG
+            throw new Program.OutOfGasException("not enough gasRemaining to pay storage rent. gasRemaining: {}, gasNeeded: {}");
+        }
+
+        LOGGER_FEDE.error("executionBlockTimestamp: {}", executionBlockTimestamp);
+
+        this.rentedNodes.forEach(node -> {
+            long updatedRentTimestamp = node.updatedRentTimestamp(executionBlockTimestamp);
+            long oldTimestamp = node.getLastRentPaidTimestamp();
+
+            repository.updateLastRentPaidTimestamp(
                 node.getKey().getData(),
-                node.updatedRentTimestamp(executionBlockTimestamp)));
+                    updatedRentTimestamp);
 
-        this.paidRent = cumulativeRent;
+            LOGGER_FEDE.error("updated timestamp - node: {}, oldTimestamp: {}, updatedRentTimestamp: {}",
+                    printableKey(node), oldTimestamp, updatedRentTimestamp);
+        });
 
-        return GasCost.subtract(gas, cumulativeRent);
+        this.paidRent = totalRent;
+        this.rollbacksRent = rollbacksRent;
+
+        LOGGER_FEDE.error("paidRent: {}, rollbacksRent: {}", this.paidRent, this.rollbacksRent);
+
+        return GasCost.subtract(gasRemaining, this.paidRent);
     }
 
+    // todo(fedejinich) this is for debugging
+    private String printableKey(RentedNode node) {
+        String s = HexUtils.toJsonHex(node.getKey().getData());
+        return s.substring(s.length() - 5);
+    }
+
+    private long rentBy(Collection<RentedNode> rentedNodeCollection, Function<RentedNode, Long> rentMapFunction) {
+        return rentedNodeCollection.isEmpty() ? 0 : rentedNodeCollection.stream()
+                .map(r -> rentMapFunction.apply(r))
+                .reduce(GasCost::add)
+                .get();
+    }
+
+    // todo(fedejinich) this can be improved, to me it makes sense
+    private void fetchStorageRentData(Repository repository, Collection<RentedNode> nodes) {
+        nodes.forEach(node -> {
+            Map<String, Long> storageRentData = repository.fetchStorageRentData(node.getKey().getData());
+
+            Long nodeSize = storageRentData.get("nodeSize");
+            Long lastRentPaidTimestamp = storageRentData.get("lastRentPaidTimestamp");
+
+            node.setStorageRentData(nodeSize, lastRentPaidTimestamp);
+
+            LOGGER_FEDE.error("fetched storage rent data - node: {}, nodeSize: {}, timestamp: {}",
+                    printableKey(node), nodeSize, lastRentPaidTimestamp);
+        });
+    }
+
+    @VisibleForTesting
     public long getPaidRent() {
-        return paidRent;
+        return this.paidRent;
     }
 
+    @VisibleForTesting
+    public long getRollbacksRent() {
+        return this.rollbacksRent;
+    }
+
+    @VisibleForTesting
     public Collection<RentedNode> getRentedNodes() {
-        return rentedNodes;
+        return this.rentedNodes;
+    }
+
+    @VisibleForTesting
+    public List<RentedNode> getRolledBackNodes() {
+        return this.rolledBackNodes;
     }
 
     /**

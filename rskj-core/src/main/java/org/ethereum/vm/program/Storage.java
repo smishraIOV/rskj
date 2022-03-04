@@ -247,4 +247,14 @@ public class Storage implements Repository, ProgramListenerAware {
     public Collection<RentedNode> getStorageRentNodes() {
         return repository.getStorageRentNodes();
     }
+
+    @Override
+    public List<RentedNode> getRolledBackNodes() {
+        return repository.getRolledBackNodes();
+    }
+
+    @Override
+    public void addRolledBackNodes(Collection<TrackedNode> trackedNodes) {
+        repository.addRolledBackNodes(trackedNodes);
+    }
 }

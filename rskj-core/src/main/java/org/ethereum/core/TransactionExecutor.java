@@ -63,6 +63,7 @@ import static org.ethereum.util.ByteUtil.EMPTY_BYTE_ARRAY;
  * @since 19.12.2014
  */
 public class TransactionExecutor {
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger("fede");
 
     private static final Logger logger = LoggerFactory.getLogger("execute");
     private static final Profiler profiler = ProfilerFactory.getInstance();
@@ -92,7 +93,7 @@ public class TransactionExecutor {
 
     private TransactionReceipt receipt;
     private ProgramResult result = new ProgramResult();
-    private StorageRentManager storageRentManager = new StorageRentManager(Collections.EMPTY_SET);
+    private StorageRentManager storageRentManager = new StorageRentManager();
     private final Block executionBlock;
 
     private VM vm;
@@ -142,6 +143,11 @@ public class TransactionExecutor {
      * @return true if the transaction is valid and executed, false if the transaction is invalid
      */
     public boolean executeTransaction() {
+        LOGGER_FEDE.error("-------------- EXECUTING TRANSACTION -------------- ");
+        String arg = HexUtils.toJsonHex(tx.getHash().getBytes());
+        LOGGER_FEDE.error("tx: {}", arg.substring(arg.length() - 5));
+        LOGGER_FEDE.error("STORAGE RENT ENABLED: {}", isStorageRentEnabled());
+
         if (!this.init()) {
             return false;
         }
@@ -514,7 +520,10 @@ public class TransactionExecutor {
         logger.trace("Finalize transaction {} {}", toBI(tx.getNonce()), tx.getHash());
 
         if(isStorageRentEnabled()) {
-            this.storageRentManager = new StorageRentManager(storageRentTrack().getStorageRentNodes());
+            this.storageRentManager = new StorageRentManager(
+                    storageRentTrack().getStorageRentNodes(),
+                    storageRentTrack().getRolledBackNodes()
+            );
 
             // pay storage rent
             gasLeftover = storageRentManager.pay(gasLeftover, executionBlock.getTimestamp(), storageRentTrack());

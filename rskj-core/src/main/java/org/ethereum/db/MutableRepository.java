@@ -18,7 +18,6 @@
 
 package org.ethereum.db;
 
-import co.rsk.RskContext;
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
 import co.rsk.core.types.ints.Uint24;
@@ -42,12 +41,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static co.rsk.trie.Trie.NO_RENT_TIMESTAMP;
 import static org.ethereum.db.OperationType.*;
 
 public class MutableRepository implements Repository {
-    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger(MutableRepository.class);
+    private static final Logger LOGGER_FEDE = LoggerFactory.getLogger("fede");
 
     private static final Logger logger = LoggerFactory.getLogger("repository");
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
@@ -57,10 +57,16 @@ public class MutableRepository implements Repository {
     protected final TrieKeyMapper trieKeyMapper;
     protected final MutableTrie mutableTrie;
 
+
+
+    // todo(fedejinich) ALL THIS MEMBERS MIGHT/SHOULD BE MOVED TO MutableRepositoryTracked
+
     // a set to track all the used trie-value-containing nodes in this repository (and its children repositories)
     protected final Set<TrackedNode> trackedNodes;
     // a list to track mismatched trie-keys
     protected final List<ByteArrayWrapper> mismatches; // todo(fedejinich) this might be removed
+    // a list of nodes tracked nodes that were rolled back (due to revert or OOG)
+    protected final List<TrackedNode> rolledBackNodes;
     // parent repository to commit tracked nodes
     protected final Repository parentRepository;
 
@@ -72,12 +78,14 @@ public class MutableRepository implements Repository {
         this(mutableTrie, null);
     }
 
+    // todo(fedejinich) default constructor will be MutableRepository(MutableTrie mutableTrie)
     public MutableRepository(MutableTrie mutableTrie, Repository parentRepository) {
         this.trieKeyMapper = new TrieKeyMapper();
         this.mutableTrie = mutableTrie;
-        this.parentRepository = parentRepository;
-        this.trackedNodes = new HashSet<>();
-        this.mismatches = new ArrayList<>();
+        this.parentRepository = parentRepository; // todo(fedejinich) this will be moved to MutableRepositoryTracked
+        this.trackedNodes = new HashSet<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
+        this.mismatches = new ArrayList<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
+        this.rolledBackNodes = new ArrayList<>(); // todo(fedejinich) this will be moved to MutableRepositoryTracked
     }
 
     @Override
@@ -350,42 +358,22 @@ public class MutableRepository implements Repository {
     public synchronized void commit() {
         this.mutableTrie.commit();
 
-        // todo(fedejinich) this is unnecessary but there is a techdebt at BlockChainBuilder:177
         if(this.parentRepository != null) {
             this.parentRepository.mergeTrackedNodes(this.trackedNodes, this.mismatches);
+            this.parentRepository.addRolledBackNodes(this.rolledBackNodes);
         }
     }
 
     @Override
     public synchronized void rollback() {
         this.mutableTrie.rollback();
-        this.trackedNodes.clear();
-        this.mismatches.clear();
-    }
 
-    @Override
-    public void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches) {
-        this.trackedNodes.addAll(trackedNodes);
-        this.mismatches.addAll(mismatches);
-    }
-
-    @Override
-    public Collection<RentedNode> getStorageRentNodes() {
-        Map<ByteArrayWrapper, RentedNode> rentedNodes = new HashMap<>();
-        this.trackedNodes.forEach(trackedNode -> {
-            ByteArrayWrapper key = new ByteArrayWrapper(trackedNode.getKey().getData());
-            RentedNode rentedNode = new RentedNode(trackedNode);
-            RentedNode containedNode = rentedNodes.get(key);
-            if(containedNode != null) {
-                if(containedNode.shouldBeReplaced(rentedNode)) {
-                    rentedNodes.put(key, rentedNode);
-                }
-            } else {
-                rentedNodes.put(key, rentedNode);
-            }
-        });
-
-        return rentedNodes.values();
+        if(parentRepository != null) {
+            this.parentRepository.addRolledBackNodes(this.trackedNodes);
+            this.trackedNodes.clear();
+            this.mismatches.clear();
+            this.rolledBackNodes.clear();
+        }
     }
 
     @Override
@@ -423,7 +411,13 @@ public class MutableRepository implements Repository {
     
     @Override
     public Map<String, Long> fetchStorageRentData(byte[] key) {
+//        MutableTrie resultFromTrie = this.mutableTrie.find(key);
         MutableTrie resultFromTrie = this.mutableTrie.find(key);
+
+        // todo(fedejinich) it should first try to find a key in the cache (most updated value) and then go to trie.
+//        long fetchedTimestamp = this.mutableTrie.fetchLastRentPaidTimestamp(key);
+        // todo(fedejinich) it should first try to find a node size in the cache (most updated value) and then go to trie.
+//        long fetchedSize = this.mutableTrie.fetchLastRentPaidTimestamp(key);
 
         // the key exists in the cache, but is not present in the
         // trie before executing the transaction, therefore it's a new node
@@ -434,7 +428,7 @@ public class MutableRepository implements Repository {
 
         String s = HexUtils.toJsonHex(key);
         LOGGER_FEDE.error("key: {}, isNewNode: {}", s.substring(s.length() - 5), newNode);
-        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
+//        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
 
         Map<String, Long> storageRentData = new HashMap<>();
         // todo(fedejinich) is this ok? (getValueLength) this is not ok, it should be the length of the serialized node
@@ -506,14 +500,9 @@ public class MutableRepository implements Repository {
     }
 
     protected void internalDeleteRecursive(byte[] key) {
-        // todo(fedejinich) if we remove mismatches we can avoid the overhead of find+delete
-        boolean exists = this.mutableTrie.find(key) != null;
-        if(exists) {
-            trackNode(key, DELETE_OPERATION);
-        } else {
-            trackMismatch(key);
-        }
+        // todo(fedejinich) what happens for non existing keys? should trackMismatch?
         mutableTrie.deleteRecursive(key);
+        trackNode(key, DELETE_OPERATION);
     }
 
     /**
@@ -533,7 +522,38 @@ public class MutableRepository implements Repository {
         this.mismatches.add(new ByteArrayWrapper(key));
     }
 
-    private boolean isStorageRentEnabled() {
-        return storageRentManager != null;
+    @Override
+    public void mergeTrackedNodes(Set<TrackedNode> trackedNodes, List<ByteArrayWrapper> mismatches) {
+        this.trackedNodes.addAll(trackedNodes);
+        this.mismatches.addAll(mismatches);
+    }
+
+    @Override
+    public Collection<RentedNode> getStorageRentNodes() {
+        Map<ByteArrayWrapper, RentedNode> rentedNodes = new HashMap<>();
+        this.trackedNodes.forEach(trackedNode -> {
+            ByteArrayWrapper key = new ByteArrayWrapper(trackedNode.getKey().getData());
+            RentedNode rentedNode = new RentedNode(trackedNode);
+            RentedNode containedNode = rentedNodes.get(key);
+            if(containedNode != null) {
+                if(containedNode.shouldBeReplaced(rentedNode)) {
+                    rentedNodes.put(key, rentedNode);
+                }
+            } else {
+                rentedNodes.put(key, rentedNode);
+            }
+        });
+
+        return rentedNodes.values();
+    }
+
+    @Override
+    public void addRolledBackNodes(Collection<TrackedNode> trackedNodes) {
+        this.rolledBackNodes.addAll(trackedNodes);
+    }
+
+    @Override
+    public List<RentedNode> getRolledBackNodes() {
+        return this.rolledBackNodes.stream().map(trackedNode -> new RentedNode(trackedNode)).collect(Collectors.toList());
     }
 }
