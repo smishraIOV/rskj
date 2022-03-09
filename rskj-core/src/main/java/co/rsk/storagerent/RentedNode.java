@@ -89,6 +89,7 @@ public class RentedNode extends TrackedNode {
 
         // todo(fedejinich) is this the right way to calculate the duration?
         // todo(fedejinch) checkout oveflows
+        // todo(shree) this should never be negative: we do not collect any rent in advance (not even for new nodes as per rskip240)
         duration = currentBlockTimsetamp - this.getLastRentPaidTimestamp();
         LOGGER_FEDE.error("node: {}, duration: {}", printableKey(getKey().getData()), duration);
         return duration;
@@ -103,6 +104,9 @@ public class RentedNode extends TrackedNode {
         return loadsContract ? RENT_CAP_CONTRACT_CODE : RENT_CAP;
     }
 
+    // todo(shree) this 25 percent is for rollbacks in case of some state changes are reverted.
+    //      * If execution gas OOG, then this doesn't matter (there won't be anything left to collect).  
+    //      * Also this is unrelated to trie miss (mismatch)
     public long rollbackFee(long executionBlockTimestamp) {
         return (long) (payableRent(executionBlockTimestamp) * 0.25); // todo(fedejinich) avoid casting?
     }

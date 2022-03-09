@@ -84,6 +84,8 @@ public class TransactionExecutor {
     private Coin paidFees;
 
     // this track it's used within all the transactions included in the block
+    // todo(shree): the above is unclear. The block level track changes after every TX is executed. 
+    //          So this should be the repository just before this tx's execution was initiated. 
     private final Repository blockTrack;
     // this track it's used just for this transaction, it's created and committed in this executor
     private final Repository transactionTrack;
@@ -625,9 +627,20 @@ public class TransactionExecutor {
     @VisibleForTesting
     public boolean isStorageRentEnabled() {
         // todo(fedejinich) should i add a check for remasc transaction?
+        /* todo(shree): we are protecting wallets that may use 21k by default for simple sends, 
+        //     But we are not generally disabling rent for simple sends - that option remains avail. 
+        //     For this reason, while the presence of data enables rent, the absence by itself should not disable rent tracking)
+        //     We want to disable rent tracking only if tx.gaslimit==21K (exactly) AND tx.data = null.
         return activations.isActive(RSKIP240) &&
                 !isEmpty(tx.getData()) &&
                 GasCost.toGas(tx.getGasLimit()) > GasCost.TRANSACTION;
+        */
+        
+        ///** todo(shree) alternative: either gaslimit !=21k or there's some data or both
+        // some tx can consume < GasCost.TRANSACTION (due to refunds)
+        return activations.isActive(RSKIP240) && 
+                (GasCost.toGas(tx.getGasLimit()) != GasCost.TRANSACTION || !isEmpty(tx.getData())); 
+        //*/
     }
 
     private TransactionExecutionSummary buildTransactionExecutionSummary(TransactionExecutionSummary.Builder summaryBuilder, long gasRefund) {

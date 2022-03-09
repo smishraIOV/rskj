@@ -21,7 +21,9 @@ public class StorageRentManager {
     public static final long NO_RENT_TO_PAY = -1;
     public static final long NO_ROLLBACK_YET = -1;
 
+    // todo(shree) this should be append only (no rollbacks)
     private final Collection<RentedNode> rentedNodes;
+    // todo(shree) State changes that are rolled back for some reason (25% of computed-rent collected for extra work)
     private final List<RentedNode> rolledBackNodes;
 
     private long paidRent = NO_RENT_TO_PAY;
@@ -55,6 +57,10 @@ public class StorageRentManager {
         }
 
         long payableRent = rentBy(this.rentedNodes, rentedNode -> rentedNode.payableRent(executionBlockTimestamp));
+        // todo(shree) rollbackfee already incorporates the idea of retaining only 25%
+        // Q: However, we check that rolledBackNodes do not contain anything ..
+        //      .. for which rent is collected above (do not pay more than once)? Bcos it is possible that a node is 
+        //      .. touched by multiple internal tx but rolled back in one of them
         long rollbacksRent = rentBy(this.rolledBackNodes, rentedNode -> rentedNode.rollbackFee(executionBlockTimestamp));
 
         LOGGER_FEDE.error("payableRent: {}, rollbacksRent: {}", payableRent, rollbacksRent);
@@ -148,8 +154,12 @@ public class StorageRentManager {
     /**
      * Commits nodes from another storage rent manager, which is used to track nodes from internal transactions
      * @param temporaryStorageRentManager a temporary rent manager, only used to track nodes
-     * */
+     * 
     public void commit(StorageRentManager temporaryStorageRentManager) {
+        // todo(shree): 
+        //      1. delete "values()" 
+        //      2. isn't this just a merger of two collections? Perhaps we need the logic of `shouldBeReplaced` 
+        //      3. trackNode() is not defined here 
         temporaryStorageRentManager.rentedNodes.values().forEach(node -> trackNode(node));
-    }
+    } */
 }
