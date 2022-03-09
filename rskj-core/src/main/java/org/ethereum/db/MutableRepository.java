@@ -57,8 +57,6 @@ public class MutableRepository implements Repository {
     protected final TrieKeyMapper trieKeyMapper;
     protected final MutableTrie mutableTrie;
 
-
-
     // todo(fedejinich) ALL THIS MEMBERS MIGHT/SHOULD BE MOVED TO MutableRepositoryTracked
 
     // a set to track all the used trie-value-containing nodes in this repository (and its children repositories)
@@ -414,10 +412,15 @@ public class MutableRepository implements Repository {
 //        MutableTrie resultFromTrie = this.mutableTrie.find(key);
         MutableTrie resultFromTrie = this.mutableTrie.find(key);
 
-        // todo(fedejinich) it should first try to find a key in the cache (most updated value) and then go to trie.
-//        long fetchedTimestamp = this.mutableTrie.fetchLastRentPaidTimestamp(key);
-        // todo(fedejinich) it should first try to find a node size in the cache (most updated value) and then go to trie.
-//        long fetchedSize = this.mutableTrie.fetchLastRentPaidTimestamp(key);
+        // todo(fedejinich) it should first try to find a key in the cache (most updated value)
+        // todo(shree) comment this out, not implemented yet and not referenced
+        //long fetchedTimestamp = this.mutableTrie.fetchLastRentPaidTimestamp(key);
+        
+        // todo(fedejinich) it should first try to find a node size in the cache (most updated value)
+//        long fetchedSize = this.mutableTrie.fetchNodeSize(key);
+        
+        // todo(fedejinich) if the values are not present in the cache then it needs to go to the real trie,
+        //  using 'find(key)' is the best option because it retrieves both values (nodeSize + timestamp)
 
         // the key exists in the cache, but is not present in the
         // trie before executing the transaction, therefore it's a new node
@@ -428,7 +431,6 @@ public class MutableRepository implements Repository {
 
         String s = HexUtils.toJsonHex(key);
         LOGGER_FEDE.error("key: {}, isNewNode: {}", s.substring(s.length() - 5), newNode);
-//        LOGGER_FEDE.error("nodeSize: {}", nodeSize);
 
         Map<String, Long> storageRentData = new HashMap<>();
         // todo(fedejinich) is this ok? (getValueLength) this is not ok, it should be the length of the serialized node

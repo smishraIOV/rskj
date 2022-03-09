@@ -86,27 +86,23 @@ public class StorageRentDSLTests {
 
         // todo(fedejinich) need to accumulate rent to check real payments
 
-        long rentedNodesBalanceOfAcc1 = 3; //todo(shree): why are these different
-        long rentedNodesBalanceOfAcc2 = 2; // because there is not storage cell for acc2 yet (0 balance)
+        // todo(shree): The number of nodes touched should be 5 each? but ** are not touched! 
+        //      sender, contract account, code**, storage root**, storage cell
+        long rentedNodesBalanceOfAcc1 = 3; // rented nodes at balanceOf(acc1)
+        long rentedNodesBalanceOfAcc2 = 2; // rented nodes at balanceOf(acc2), one less because acc2 has no token balance (no cell)
 
         // balanceOf
-        // todo(shree): these are token balance checks, yeah? 
-        //  so the number of nodes touched should be 5 each?: sender, contract account, code, storage root, storage cell
-        checkStorageRent(world,"tx03", 0, 0,
-                rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx04", 0, 0,
-                rentedNodesBalanceOfAcc2, 0, 0);
+        checkStorageRent(world,"tx03", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx04", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
 
         // transfer
-        checkStorageRent(world,"tx05", 0, 0, 4, 0, 0);
+        checkStorageRent(world,"tx05", 1, 0, 4, 0, 0);
 
-        // Now update the number of nodes touched (since there is a storage cell for acc2 token bal)        
-        rentedNodesBalanceOfAcc2 = 3; // because there is not storage cell for acc2 yet (0 balance)        
+        // Update the number of nodes touched since now there is a storage cell for acc2 token bal.        
+        rentedNodesBalanceOfAcc2 = 3;        
         // balanceOf
-        checkStorageRent(world,"tx06", 0, 0,
-                rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx07", 0, 0,
-                rentedNodesBalanceOfAcc2, 0, 0); // todo(shree) this was off by 1
+        checkStorageRent(world,"tx06", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx07", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
     }
 
     /**

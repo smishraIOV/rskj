@@ -145,9 +145,8 @@ public class TransactionExecutor {
      * @return true if the transaction is valid and executed, false if the transaction is invalid
      */
     public boolean executeTransaction() {
-        LOGGER_FEDE.error("-------------- EXECUTING TRANSACTION -------------- ");
         String arg = HexUtils.toJsonHex(tx.getHash().getBytes());
-        LOGGER_FEDE.error("tx: {}", arg.substring(arg.length() - 5));
+        LOGGER_FEDE.error("-------------- EXECUTING TRANSACTION ({}) -------------- ", arg.substring(arg.length() - 5));
         LOGGER_FEDE.error("STORAGE RENT ENABLED: {}", isStorageRentEnabled());
 
         if (!this.init()) {

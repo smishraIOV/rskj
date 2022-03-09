@@ -83,16 +83,21 @@ public class RentedNode extends TrackedNode {
     private long duration(long currentBlockTimsetamp) {
         long duration = 0;
         if(this.getLastRentPaidTimestamp() == Trie.NO_RENT_TIMESTAMP) {
-            LOGGER_FEDE.error("node: {}, duration: {}", printableKey(getKey().getData()), duration);
+            LOGGER_FEDE.error("{} is a new node, it has no duration", this.printableKey(this.getKey().getData())); // todo(fedejinich) debug
             return duration; // todo(fedejinich) what is the duration for new nodes or old nodes (< Hop)?
         }
 
         // todo(fedejinich) is this the right way to calculate the duration?
         // todo(fedejinch) checkout oveflows
-        // todo(shree) this should never be negative: we do not collect any rent in advance (not even for new nodes as per rskip240)
+        // todo(shree) this should never be negative: we do not collect any rent in advance (not even for new nodes as per rskip240)  
         duration = currentBlockTimsetamp - this.getLastRentPaidTimestamp();
-        LOGGER_FEDE.error("node: {}, duration: {}", printableKey(getKey().getData()), duration);
+        logDuration(currentBlockTimsetamp, duration); // todo(fedejinich) debug
         return duration;
+    }
+
+    private void logDuration(long currentBlockTimsetamp, long duration) {
+        LOGGER_FEDE.error("node: {}, blockTimestamp: {}, lastRentPaidTimestamp: {} => duration: {}",
+                printableKey(getKey().getData()), currentBlockTimsetamp, getLastRentPaidTimestamp(), duration);
     }
 
     private long rentThreshold(boolean loadsContractCode) {
