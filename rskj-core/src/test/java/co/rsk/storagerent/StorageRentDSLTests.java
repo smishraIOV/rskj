@@ -92,17 +92,17 @@ public class StorageRentDSLTests {
         long rentedNodesBalanceOfAcc2 = 2; // rented nodes at balanceOf(acc2), one less because acc2 has no token balance (no cell)
 
         // balanceOf
-        checkStorageRent(world,"tx03", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx04", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
+        checkStorageRent(world,"tx03", 0, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx04", 0, 0, rentedNodesBalanceOfAcc2, 0, 0);
 
         // transfer
-        checkStorageRent(world,"tx05", 1, 0, 4, 0, 0);
+        checkStorageRent(world,"tx05", 0, 0, 4, 0, 0);
 
         // Update the number of nodes touched since now there is a storage cell for acc2 token bal.        
         rentedNodesBalanceOfAcc2 = 3;        
         // balanceOf
-        checkStorageRent(world,"tx06", 1, 0, rentedNodesBalanceOfAcc1, 0, 0);
-        checkStorageRent(world,"tx07", 1, 0, rentedNodesBalanceOfAcc2, 0, 0);
+        checkStorageRent(world,"tx06", 0, 0, rentedNodesBalanceOfAcc1, 0, 0);
+        checkStorageRent(world,"tx07", 0, 0, rentedNodesBalanceOfAcc2, 0, 0);
     }
 
     /**
