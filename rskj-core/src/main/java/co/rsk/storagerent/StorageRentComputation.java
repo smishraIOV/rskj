@@ -23,6 +23,8 @@ package co.rsk.storagerent;
 // todo(fedejinich) this class can be moved into StorageRent
 
 import co.rsk.trie.Trie;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
@@ -40,6 +42,8 @@ public class StorageRentComputation {
     private static final double RENTAL_RATE = (1 / Math.pow(2, 21));
     private static final long STORAGE_OVERHEAD = 128;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("execute");
+
     private StorageRentComputation() {}
 
     /**
@@ -55,7 +59,9 @@ public class StorageRentComputation {
         validateArgumentsComputeRent(rentCap, rentThreshold);
 
         long computedRent = Math.min(rentCap, rentDue);
-        
+
+        LOGGER.error("computed rent: {}, rentThreshold: {}", computedRent, rentThreshold);
+
         return computedRent > rentThreshold ? computedRent : 0;
     }
 
