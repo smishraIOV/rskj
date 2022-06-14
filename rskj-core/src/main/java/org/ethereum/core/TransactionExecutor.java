@@ -36,6 +36,7 @@ import org.ethereum.config.blockchain.upgrades.ConsensusRule;
 import org.ethereum.db.BlockStore;
 import org.ethereum.db.MutableRepositoryTracked;
 import org.ethereum.db.ReceiptStore;
+import org.ethereum.util.ByteUtil;
 import org.ethereum.vm.*;
 import org.ethereum.vm.exception.VMException;
 import org.ethereum.vm.program.Program;
@@ -146,6 +147,17 @@ public class TransactionExecutor {
      * @return true if the transaction is valid and executed, false if the transaction is invalid
      */
     public boolean executeTransaction() {
+        if(tx != null && tx.getGasLimit() != null)
+            logger.error("fede - provided gas limit: {}", ByteUtil.byteArrayToLong(tx.getGasLimit()));
+        if(tx != null && tx.getHash() != null)
+            logger.error("fede - tx hash: {}", tx.getHash().toJsonString());
+
+        logger.error("fede - tx gas price: {}", tx.getGasPrice());
+
+        logger.error("fede - tx gas price: {}", tx.getData());
+
+
+
         if (!this.init()) {
             return false;
         }
