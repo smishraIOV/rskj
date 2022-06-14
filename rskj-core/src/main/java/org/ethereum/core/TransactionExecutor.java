@@ -631,6 +631,8 @@ public class TransactionExecutor {
     public boolean isStorageRentEnabled() {
         return activations.isActive(RSKIP240) &&
                 (!isEmpty(tx.getData()) || GasCost.toGas(tx.getGasLimit()) != GasCost.TRANSACTION) &&
+                GasCost.toGas(tx.getGasLimit()) != 0 &&
+                !tx.getGasPrice().equals(Coin.ZERO) &&
                 storageRentEnabled; // todo(fedejinich) this is a workaround to enable storageRent just in DSL test
     }
 
