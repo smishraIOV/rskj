@@ -154,9 +154,9 @@ public class TransactionExecutor {
 
         logger.error("fede - tx gas price: {}", tx.getGasPrice());
 
-        logger.error("fede - tx gas price: {}", tx.getData());
-
-
+        if(tx.getData() != null){
+            logger.error("fede - tx data length: {} bytes", tx.getData().length);
+        }
 
         if (!this.init()) {
             return false;
@@ -529,10 +529,11 @@ public class TransactionExecutor {
         if(isStorageRentEnabled()) {
             // pay storage rent
             logger.error("Paying storage rent. gas: {}", gasLeftover);
-
-            storageRentResult = storageRentManager.pay(gasLeftover, executionBlock.getTimestamp(),
+            /* todo(shree) rent timestamp "seconds" changed to block number for benchmarking tool tests*/
+            storageRentResult = storageRentManager.pay(gasLeftover, executionBlock.getNumber(),
                     (MutableRepositoryTracked) blockTrack, (MutableRepositoryTracked) transactionTrack,
                     tx.getHash().toHexString());
+            
 
             gasLeftover = storageRentResult.getGasAfterPayingRent();
 

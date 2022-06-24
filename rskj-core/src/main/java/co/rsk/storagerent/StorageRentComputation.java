@@ -39,7 +39,10 @@ public class StorageRentComputation {
     public static final long RENT_CAP = 5000;
     public static final long RENT_CAP_CONTRACT_CODE = 30000;
 
-    private static final double RENTAL_RATE = (1 / Math.pow(2, 21));
+    //todo(shree): modified rental rate for benchmarking tool test (blocknumber instead of timestamp)
+    // 30 seconds (per block) and inflate rent by (365×24×60×2)÷100 = 10512 // no. of blocks per year/100 profiler blocks
+    //    so 100 blocks in benchmarking tool will represent same time as one year's worth of blocks
+    private static final double RENTAL_RATE = (30*10512 / Math.pow(2, 21));
     private static final long STORAGE_OVERHEAD = 128;
 
     private static final Logger LOGGER = LoggerFactory.getLogger("execute");
@@ -77,9 +80,9 @@ public class StorageRentComputation {
     public static long rentDue(long nodeSize, long duration) {
         validateArgumentsRentDue(nodeSize, duration);
         long nodeSizeWithOverhead = nodeSize + STORAGE_OVERHEAD;
-
+        // todo(shree): changed duration from millisecs (is it even ms), to block number difference for benchmarking tool testing
         return (long) Math.floor(Double.valueOf(nodeSizeWithOverhead) *
-                Double.valueOf(TimeUnit.MILLISECONDS.toSeconds(duration)) * RENTAL_RATE);
+                Double.valueOf(duration) * RENTAL_RATE);
     }
 
     /**
