@@ -330,7 +330,7 @@ public class Constants {
                 0,
                 new BridgeRegTestConstants(),
                 new BlockDifficulty(MINIMUN_DIFFICULTY_FOR_RSKIP290),
-                1_000_000L
+                10_000_000L
         );
     }
 
